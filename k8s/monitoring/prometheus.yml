@@ -18,6 +18,57 @@ data:
         static_configs:
           - targets:
               - auth-service.gestion-projet.svc.cluster.local:8081
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: monitoring
+data:
+  alert-rules.yml: |
+    groups:
+    - name: auth-service-alerts
+      rules:
+
+      - alert: AuthServiceDown
+        expr: up{job="auth-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Auth Service DOWN"
+          description: "auth-service ne répond plus"
+
+      - alert: HighJVMMemoryUsage
+        expr: sum(jvm_memory_used_bytes{area="heap"})
+              / sum(jvm_memory_max_bytes{area="heap"}) > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM Memory Usage"
+          description: "Heap JVM > 80%"
+
+      - alert: HighCPUUsage
+        expr: process_cpu_usage > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU Usage"
+          description: "CPU > 80%"
+
+      - alert: HighDBConnections
+        expr: hikaricp_connections_active
+              / hikaricp_connections_max > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High DB connections usage"
+          description: "DB connections > 80%"
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -42,19 +93,14 @@ spec:
           ports:
             - containerPort: 9090
           volumeMounts:
-            # ✅ Config principale Prometheus
             - name: prometheus-config
               mountPath: /etc/prometheus
-
-            # ✅ Règles d’alertes
             - name: alert-rules
               mountPath: /etc/prometheus/alerts
-
       volumes:
         - name: prometheus-config
           configMap:
             name: prometheus-config
-
         - name: alert-rules
           configMap:
             name: prometheus-alerts
@@ -73,4 +119,4 @@ spec:
     - port: 9090
       targetPort: 9090
       nodePort: 30090
-
+``
