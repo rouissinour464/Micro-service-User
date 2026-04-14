@@ -24,25 +24,20 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // ✅ Désactiver CSRF & CORS (API stateless)
+            // ✅ API stateless
             .csrf(AbstractHttpConfigurer::disable)
             .cors(AbstractHttpConfigurer::disable)
 
-            // ✅ Stateless (JWT)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // ✅ Règles de sécurité
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ ACTUATOR (PROMETHEUS / HEALTH)
-                .requestMatchers("/actuator/**").permitAll()
-
-                // ✅ ENDPOINTS PUBLICS
+                // ✅ PUBLIC
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
@@ -55,13 +50,12 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             );
 
-        // ✅ JWT FILTER AVANT UsernamePasswordAuthenticationFilter
+        // ✅ JWT FILTER
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // ✅ Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
