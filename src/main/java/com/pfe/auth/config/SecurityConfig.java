@@ -27,34 +27,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(AbstractHttpConfigurer::disable)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
 
-                .authorizeHttpRequests(auth -> auth
+            .authorizeHttpRequests(auth -> auth
 
-                        // ✅ PUBLIC
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                // ✅ ACTUATOR (OBLIGATOIRE POUR PROMETHEUS)
+                .requestMatchers("/actuator/prometheus").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
 
-                        // ✅ ADMIN ONLY
-                        // IMPORTANT : bien utiliser /api/admin/** (et non /api/users)
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // ✅ PUBLIC
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 
-                        // ✅ Vos autres routes AUTH
-                        .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
+                // ✅ ADMIN ONLY
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
 
-                        // ✅ AUTH REQUIRED
-                        .requestMatchers("/api/auth/profile").authenticated()
-                        .requestMatchers("/api/auth/logout").authenticated()
+                // ✅ AUTH REQUIRED
+                .requestMatchers("/api/auth/profile").authenticated()
+                .requestMatchers("/api/auth/logout").authenticated()
 
-                        // ✅ Tout le reste nécessite un token
-                        .anyRequest().authenticated()
-                );
+                // ✅ TOUT LE RESTE
+                .anyRequest().authenticated()
+            );
 
-        // ✅ Filtre JWT AVANT UsernamePasswordAuthenticationFilter
+        // ✅ JWT FILTER
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
