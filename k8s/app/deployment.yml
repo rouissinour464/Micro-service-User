@@ -19,9 +19,8 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
-
           env:
-            # --- CONFIGMAP ---
+            # CONFIGMAP
             - name: SERVER_PORT
               valueFrom:
                 configMapKeyRef:
@@ -64,7 +63,7 @@ spec:
                   name: auth-config
                   key: HIBERNATE_FORMAT_SQL
 
-            # --- SECRET ---
+            # SECRETS
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -94,4 +93,3 @@ spec:
                 secretKeyRef:
                   name: auth-secret
                   key: JWT_REFRESH_EXPIRATION
-
