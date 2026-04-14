@@ -11,17 +11,13 @@ import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointR
 public class ActuatorSecurityConfig {
 
     @Bean
-    @Order(0) // ✅ priorité MAX
+    @Order(0) // ✅ priorité maximale
     public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // ✅ MATCH ACTUATOR (OFFICIEL)
+            // ✅ MATCH ACTUATOR (PAS LES URLS)
             .securityMatcher(EndpointRequest.toAnyEndpoint())
-
-            // ✅ TOUT AUTORISER
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-
-            // ✅ PAS DE CSRF
             .csrf(csrf -> csrf.disable());
 
         return http.build();
