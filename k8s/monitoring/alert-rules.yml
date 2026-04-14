@@ -1,53 +1,41 @@
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: auth-alerts
-  namespace: monitoring
-spec:
-  groups:
-    - name: auth-service-alerts
-      rules:
+groups:
+- name: auth-service-alerts
+  rules:
 
-        # ❌ Service DOWN
-        - alert: AuthServiceDown
-          expr: up{job="auth-service"} == 0
-          for: 30s
-          labels:
-            severity: critical
-            service: auth-service
-          annotations:
-            summary: "Auth Service DOWN"
-            description: "auth-service ne répond plus"
+  - alert: AuthServiceDown
+    expr: up{job="auth-service"} == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Auth Service DOWN"
+      description: "auth-service ne répond plus"
 
-        # ⚠️ JVM mémoire élevée
-        - alert: HighJVMMemoryUsage
-          expr: jvm_memory_used_bytes / jvm_memory_max_bytes > 0.8
-          for: 1m
-          labels:
-            severity: warning
-            service: auth-service
-          annotations:
-            summary: "High JVM Memory Usage"
-            description: "Utilisation mémoire JVM > 80%"
+  - alert: HighJVMMemoryUsage
+    expr: sum(jvm_memory_used_bytes{area="heap"})
+          / sum(jvm_memory_max_bytes{area="heap"}) > 0.8
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High JVM Memory Usage"
+      description: "Heap JVM > 80%"
 
-        # ⚠️ CPU élevé
-        - alert: HighCPUUsage
-          expr: process_cpu_usage > 0.8
-          for: 1m
-          labels:
-            severity: warning
-            service: auth-service
-          annotations:
-            summary: "High CPU Usage"
-            description: "CPU > 80% pendant 1 minute"
+  - alert: HighCPUUsage
+    expr: process_cpu_usage > 0.8
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU Usage"
+      description: "CPU > 80%"
 
-        # ⚠️ DB saturée
-        - alert: HighDBConnections
-          expr: hikaricp_connections_active / hikaricp_connections_max > 0.8
-          for: 1m
-          labels:
-            severity: warning
-            service: auth-service
-          annotations:
-            summary: "High DB connections usage"
-            description: "Plus de 80% des connexions DB utilisées"
+  - alert: HighDBConnections
+    expr: hikaricp_connections_active
+          / hikaricp_connections_max > 0.8
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High DB connections usage"
+      description: "DB connections > 80%"
