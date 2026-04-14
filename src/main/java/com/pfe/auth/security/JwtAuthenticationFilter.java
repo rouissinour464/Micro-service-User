@@ -4,14 +4,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,28 +22,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
 
-    // ✅ URL PUBLIQUES (pas de JWT obligatoire)
+    // ✅ URL PUBLIQUES
     private static final List<String> PUBLIC_URLS = List.of(
             "/api/auth/login",
             "/api/auth/register-admin",
             "/api/auth/refresh"
     );
 
+    /**
+     * ✅ EXCLUSION TOTALE DES ENDPOINTS ACTUATOR
+     * 👉 SINON PROMETHEUS = 403
+     */
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain)
-            throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getServletPath().startsWith("/actuator");
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain
+    ) throws ServletException, IOException {
 
         String path = request.getServletPath();
 
-        // ✅ 1. Ignorer les routes publiques
+        // ✅ 1. Routes publiques
         if (PUBLIC_URLS.contains(path)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // ✅ 2. Vérifier présence du header Authorization
+        // ✅ 2. Header Authorization
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             chain.doFilter(request, response);
@@ -55,21 +62,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        // ✅ 3. Vérifier validité du token
+        // ✅ 3. Token valide ?
         if (!jwtUtils.isTokenValid(token)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // ✅ 4. Extraire email depuis JWT
+        // ✅ 4. Extraire email
         String email = jwtUtils.extractEmail(token);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // ✅ 5. Charger utilisateur depuis la BD
+            // ✅ 5. Charger utilisateur
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            // ✅ 6. Créer l'objet d'authentification
+            // ✅ 6. Créer authentification
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -81,7 +88,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new WebAuthenticationDetailsSource().buildDetails(request)
             );
 
-            // ✅ 7. Définir l'utilisateur authentifié
+            // ✅ 7. Injecter dans le contexte
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
