@@ -22,8 +22,8 @@ spring:
 
 jwt:
   secret: MaCleUltraSecretePourJWT256BitsSuperLongue1234567890
-  expiration: 86400000          # 1 jour
-  refresh-expiration: 604800000 # 7 jours
+  expiration: 86400000
+  refresh-expiration: 604800000
 
 logging:
   level:
@@ -38,7 +38,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus,health,info
+        include: health,info,prometheus
   endpoint:
     prometheus:
       enabled: true
