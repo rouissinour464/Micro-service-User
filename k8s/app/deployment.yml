@@ -15,81 +15,29 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: nour292/auth-service:latest
+          image: nour292/auth-service:build-103
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
-          env:
-            # CONFIGMAP
-            - name: SERVER_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: SERVER_PORT
 
-            - name: SPRING_APPLICATION_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: SPRING_APPLICATION_NAME
+          # ✅ CHARGER TOUTE LA CONFIG D’UN COUP
+          envFrom:
+            - configMapRef:
+                name: auth-config
+            - secretRef:
+                name: auth-secret
 
-            - name: SPRING_DATASOURCE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: SPRING_DATASOURCE_URL
+          # ✅ PROBES (IMPORTANT POUR JENKINS)
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
 
-            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
-
-            - name: SPRING_JPA_SHOW_SQL
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: SPRING_JPA_SHOW_SQL
-
-            - name: HIBERNATE_DIALECT
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: HIBERNATE_DIALECT
-
-            - name: HIBERNATE_FORMAT_SQL
-              valueFrom:
-                configMapKeyRef:
-                  name: auth-config
-                  key: HIBERNATE_FORMAT_SQL
-
-            # SECRETS
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: SPRING_DATASOURCE_USERNAME
-
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: SPRING_DATASOURCE_PASSWORD
-
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: JWT_SECRET
-
-            - name: JWT_EXPIRATION
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: JWT_EXPIRATION
-
-            - name: JWT_REFRESH_EXPIRATION
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: JWT_REFRESH_EXPIRATION
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 40
+            periodSeconds: 20
