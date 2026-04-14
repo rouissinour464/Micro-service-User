@@ -8,6 +8,11 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
+      smtp_smarthost: "smtp.gmail.com:587"
+      smtp_from: "alertmanager@example.com"
+      smtp_auth_username: "alertmanager@example.com"
+      smtp_auth_password: "APP_PASSWORD"
+      smtp_require_tls: true
 
     route:
       receiver: "default"
@@ -18,10 +23,6 @@ data:
       - name: "default"
         email_configs:
           - to: "admin@example.com"
-            from: "alertmanager@example.com"
-            smarthost: "smtp.gmail.com:587"
-            auth_username: "alertmanager@example.com"
-            auth_password: "APP_PASSWORD"
 ---
 apiVersion: apps/v1
 kind: Deployment
