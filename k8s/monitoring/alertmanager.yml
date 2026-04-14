@@ -1,5 +1,15 @@
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-secret
+  namespace: monitoring
+type: Opaque
+stringData:
+  SLACK_WEBHOOK_URL: https://hooks.slack.com/services/REPLACE/WITH/REAL_WEBHOOK
+
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alertmanager-config
@@ -19,7 +29,7 @@ data:
     receivers:
     - name: slack-notifications
       slack_configs:
-      - api_url: ${SLACK_WEBHOOK_URL}
+      - api_url_file: /etc/alertmanager/secrets/SLACK_WEBHOOK_URL
         channel: "#nouveau-canal"
         send_resolved: true
         title: "{{ .CommonAnnotations.summary }}"
@@ -42,25 +52,25 @@ spec:
         app: alertmanager
     spec:
       containers:
-        - name: alertmanager
-          image: prom/alertmanager:v0.27.0
-          args:
-            - "--config.file=/etc/alertmanager/alertmanager.yml"
-          env:
-            - name: SLACK_WEBHOOK_URL
-              valueFrom:
-                secretKeyRef:
-                  name: alertmanager-secret
-                  key: SLACK_WEBHOOK_URL
-          ports:
-            - containerPort: 9093
-          volumeMounts:
-            - name: alertmanager-config
-              mountPath: /etc/alertmanager
+      - name: alertmanager
+        image: prom/alertmanager:v0.27.0
+        args:
+          - "--config.file=/etc/alertmanager/alertmanager.yml"
+        ports:
+          - containerPort: 9093
+        volumeMounts:
+          - name: alertmanager-config
+            mountPath: /etc/alertmanager
+          - name: alertmanager-secrets
+            mountPath: /etc/alertmanager/secrets
+            readOnly: true
       volumes:
         - name: alertmanager-config
           configMap:
             name: alertmanager-config
+        - name: alertmanager-secrets
+          secret:
+            secretName: alertmanager-secret
 
 ---
 apiVersion: v1
