@@ -1,8 +1,8 @@
 resources:
   - namespace.yml
-  - prometheus.yml
+  - prometheus.yaml
+  - prometheus-alerts.yaml
   - alertmanager.yml
-  - alert-rules.yml
   - grafana.yml
   - node-exporter.yml
   - servicemonitor.yml
