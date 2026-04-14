@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -22,17 +21,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
 
-    // ✅ URL PUBLIQUES
-    private static final List<String> PUBLIC_URLS = List.of(
-            "/api/auth/login",
-            "/api/auth/register-admin",
-            "/api/auth/refresh"
-    );
-
-    /**
-     * ✅ EXCLUSION TOTALE DES ENDPOINTS ACTUATOR
-     * 👉 SINON PROMETHEUS = 403
-     */
+    // ✅ NE JAMAIS filtrer Actuator
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return request.getServletPath().startsWith("/actuator");
@@ -45,15 +34,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain chain
     ) throws ServletException, IOException {
 
-        String path = request.getServletPath();
-
-        // ✅ 1. Routes publiques
-        if (PUBLIC_URLS.contains(path)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // ✅ 2. Header Authorization
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             chain.doFilter(request, response);
@@ -61,22 +41,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-
-        // ✅ 3. Token valide ?
         if (!jwtUtils.isTokenValid(token)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // ✅ 4. Extraire email
         String email = jwtUtils.extractEmail(token);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            // ✅ 5. Charger utilisateur
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            // ✅ 6. Créer authentification
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -88,11 +62,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new WebAuthenticationDetailsSource().buildDetails(request)
             );
 
-            // ✅ 7. Injecter dans le contexte
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
-        // ✅ 8. Continuer la chaîne
         chain.doFilter(request, response);
     }
 }
