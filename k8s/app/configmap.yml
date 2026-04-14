@@ -6,16 +6,14 @@ metadata:
 data:
   SERVER_PORT: "8081"
 
+  SPRING_APPLICATION_NAME: "auth-service"
+
   # ✅ ACTUATOR / PROMETHEUS
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
   MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
 
-  SPRING_APPLICATION_NAME: "auth-service"
-
-  # ✅ JDBC PROPRE
+  # ✅ JDBC (SANS HTML)
   SPRING_DATASOURCE_URL: "jdbc:postgresql://ep-wandering-rice-a4uh9a3k.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-  SPRING_DATASOURCE_USERNAME: "neondb_owner"
-  SPRING_DATASOURCE_PASSWORD: "npg_Yy8UThLqaXE1"
 
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
   SPRING_JPA_SHOW_SQL: "true"
