@@ -57,7 +57,7 @@ pipeline {
                 sh '''
                     echo "🚀 Deploying application via Kustomize..."
                     kubectl apply -k k8s/app
-                    kubectl get pods -n monitoring
+                    kubectl get pods -n gestion-projet
                 '''
             }
         }
