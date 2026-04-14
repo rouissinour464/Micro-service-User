@@ -5,38 +5,12 @@ spring:
   application:
     name: auth-service
 
-  datasource:
-    url: jdbc:postgresql://ep-wandering-rice-a4uh9a3k.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-    username: neondb_owner
-    password: npg_Yy8UThLqaXE1
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-
 jwt:
   secret: MaCleUltraSecretePourJWT256BitsSuperLongue1234567890
   expiration: 86400000
   refresh-expiration: 604800000
 
-logging:
-  level:
-    root: INFO
-    org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    com.pfe.auth: DEBUG
-
 management:
-  security:
-    enabled: false   
   endpoints:
     web:
       exposure:
