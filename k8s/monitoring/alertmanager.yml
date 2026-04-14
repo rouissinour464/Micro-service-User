@@ -58,6 +58,13 @@ spec:
           - "--config.file=/etc/alertmanager/alertmanager.yml"
         ports:
           - containerPort: 9093
+        resources:                     # ✅ AJOUT RECOMMANDÉ
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
         volumeMounts:
           - name: alertmanager-config
             mountPath: /etc/alertmanager
