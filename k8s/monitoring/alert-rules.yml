@@ -39,3 +39,4 @@ groups:
     annotations:
       summary: "High DB connections usage"
       description: "DB connections > 80%"
+``
