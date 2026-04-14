@@ -11,7 +11,7 @@ data:
       smtp_smarthost: "smtp.gmail.com:587"
       smtp_from: "alertmanager@example.com"
       smtp_auth_username: "alertmanager@example.com"
-      smtp_auth_password: "APP_PASSWORD"
+      smtp_auth_password: "${SMTP_PASSWORD}"
       smtp_require_tls: true
 
     route:
@@ -48,6 +48,12 @@ spec:
           image: prom/alertmanager:v0.27.0
           args:
             - "--config.file=/etc/alertmanager/alertmanager.yml"
+          env:
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secret
+                  key: SMTP_PASSWORD
           ports:
             - containerPort: 9093
           volumeMounts:
