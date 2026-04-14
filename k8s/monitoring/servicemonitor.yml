@@ -7,6 +7,9 @@ spec:
   selector:
     matchLabels:
       app: auth-service
+  namespaceSelector:
+    matchNames:
+      - gestion-projet
   endpoints:
     - port: http
       path: /actuator/prometheus
