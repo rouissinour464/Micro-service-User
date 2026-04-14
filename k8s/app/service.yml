@@ -5,7 +5,7 @@ metadata:
   namespace: gestion-projet
 spec:
   selector:
-    app: auth
+    app: auth-service   
   ports:
     - name: http
       port: 8081
