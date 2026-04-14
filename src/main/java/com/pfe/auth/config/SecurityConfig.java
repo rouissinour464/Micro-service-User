@@ -24,18 +24,18 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // ✅ API stateless
             .csrf(AbstractHttpConfigurer::disable)
             .cors(AbstractHttpConfigurer::disable)
-
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
             .authorizeHttpRequests(auth -> auth
+
+                // ✅ ACTUATOR OUVERT (PROMETHEUS)
+                .requestMatchers("/actuator/**").permitAll()
 
                 // ✅ PUBLIC
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
@@ -44,15 +44,12 @@ public class SecurityConfig {
 
                 // ✅ ADMIN
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
 
-                // ✅ TOUT LE RESTE
+                // ✅ LE RESTE PROTÉGÉ
                 .anyRequest().authenticated()
             );
 
-        // ✅ JWT FILTER
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
