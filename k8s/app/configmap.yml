@@ -5,8 +5,13 @@ metadata:
   namespace: gestion-projet
 data:
   SERVER_PORT: "8081"
+
+  # ✅ ACTUATOR SUR PORT DÉDIÉ (CLÉ DU PROBLÈME)
+  MANAGEMENT_SERVER_PORT: "8082"
+
   SPRING_APPLICATION_NAME: "auth-service"
 
+  # ✅ JDBC CORRIGÉ (PAS DE &amp;)
   SPRING_DATASOURCE_URL: "jdbc:postgresql://ep-wandering-rice-a4uh9a3k.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
