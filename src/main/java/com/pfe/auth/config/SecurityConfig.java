@@ -27,41 +27,41 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+            // ✅ Désactiver CSRF & CORS (API stateless)
             .csrf(AbstractHttpConfigurer::disable)
             .cors(AbstractHttpConfigurer::disable)
+
+            // ✅ Stateless (JWT)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
+            // ✅ Règles de sécurité
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ ACTUATOR (OBLIGATOIRE POUR PROMETHEUS)
-                .requestMatchers("/actuator/prometheus").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                // ✅ ACTUATOR (PROMETHEUS / HEALTH)
+                .requestMatchers("/actuator/**").permitAll()
 
-                // ✅ PUBLIC
+                // ✅ ENDPOINTS PUBLICS
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 
-                // ✅ ADMIN ONLY
+                // ✅ ADMIN
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
-
-                // ✅ AUTH REQUIRED
-                .requestMatchers("/api/auth/profile").authenticated()
-                .requestMatchers("/api/auth/logout").authenticated()
 
                 // ✅ TOUT LE RESTE
                 .anyRequest().authenticated()
             );
 
-        // ✅ JWT FILTER
+        // ✅ JWT FILTER AVANT UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // ✅ Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
