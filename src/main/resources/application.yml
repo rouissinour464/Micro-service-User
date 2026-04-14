@@ -35,6 +35,8 @@ logging:
     com.pfe.auth: DEBUG
 
 management:
+  security:
+    enabled: false   
   endpoints:
     web:
       exposure:
