@@ -9,7 +9,7 @@ data:
     global:
       scrape_interval: 5s
 
-    # ✅ CONNEXION PROMETHEUS → ALERTMANAGER
+    # ✅ PROMETHEUS → ALERTMANAGER
     alerting:
       alertmanagers:
         - static_configs:
@@ -52,18 +52,14 @@ spec:
           ports:
             - containerPort: 9090
           volumeMounts:
-            # ✅ Config Prometheus
             - name: prometheus-config
               mountPath: /etc/prometheus
-
-            # ✅ Alert rules
             - name: alert-rules
               mountPath: /etc/prometheus/alerts
       volumes:
         - name: prometheus-config
           configMap:
             name: prometheus-config
-
         - name: alert-rules
           configMap:
             name: prometheus-alerts
