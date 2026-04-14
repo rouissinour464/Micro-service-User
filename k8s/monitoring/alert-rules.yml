@@ -5,12 +5,49 @@ metadata:
   namespace: monitoring
 spec:
   groups:
-    - name: auth-service
+    - name: auth-service-alerts
       rules:
+
+        # ❌ Service DOWN
         - alert: AuthServiceDown
-          expr: up == 0
-          for: 1m
+          expr: up{job="auth-service"} == 0
+          for: 30s
           labels:
             severity: critical
+            service: auth-service
           annotations:
-            description: "Auth service is down"
+            summary: "Auth Service DOWN"
+            description: "auth-service ne répond plus"
+
+        # ⚠️ JVM mémoire élevée
+        - alert: HighJVMMemoryUsage
+          expr: jvm_memory_used_bytes / jvm_memory_max_bytes > 0.8
+          for: 1m
+          labels:
+            severity: warning
+            service: auth-service
+          annotations:
+            summary: "High JVM Memory Usage"
+            description: "Utilisation mémoire JVM > 80%"
+
+        # ⚠️ CPU élevé
+        - alert: HighCPUUsage
+          expr: process_cpu_usage > 0.8
+          for: 1m
+          labels:
+            severity: warning
+            service: auth-service
+          annotations:
+            summary: "High CPU Usage"
+            description: "CPU > 80% pendant 1 minute"
+
+        # ⚠️ DB saturée
+        - alert: HighDBConnections
+          expr: hikaricp_connections_active / hikaricp_connections_max > 0.8
+          for: 1m
+          labels:
+            severity: warning
+            service: auth-service
+          annotations:
+            summary: "High DB connections usage"
+            description: "Plus de 80% des connexions DB utilisées"
