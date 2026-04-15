@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     triggers {
-        cron('H/10 * * * *')
+        cron('H */6 * * *')   
     }
 
     tools {
@@ -35,7 +35,9 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh "docker build -t ${IMAGE}:${TAG} ."
+                sh '''
+                    docker build -t ${IMAGE}:${TAG} .
+                '''
             }
         }
 
@@ -45,7 +47,7 @@ pipeline {
                     string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')
                 ]) {
                     sh '''
-                        echo $DOCKER_PASSWORD | docker login -u nour292 --password-stdin
+                        echo "$DOCKER_PASSWORD" | docker login -u nour292 --password-stdin
                         docker push ${IMAGE}:${TAG}
                     '''
                 }
@@ -55,16 +57,17 @@ pipeline {
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
-                    echo "🚀 Deploying application via Kustomize..."
+                    echo "🚀 Deploying application..."
                     kubectl apply -k k8s/app
                     kubectl get pods -n gestion-projet
                 '''
             }
         }
 
-        stage('Rollout Restart') {
+        stage('Rollout Restart Auth Service') {
             steps {
                 sh '''
+                    echo "🔄 Restarting auth-service..."
                     kubectl rollout restart deployment auth-deployment -n gestion-projet
                     kubectl rollout status deployment auth-deployment -n gestion-projet --timeout=180s
                 '''
@@ -74,9 +77,23 @@ pipeline {
         stage('Deploy Monitoring') {
             steps {
                 sh '''
-                    echo "📊 Deploying Monitoring stack..."
+                    echo "📊 Deploying monitoring stack..."
                     kubectl apply -k k8s/monitoring
                     kubectl get pods -n monitoring
+                '''
+            }
+        }
+
+        stage('Restart Monitoring') {
+            steps {
+                sh '''
+                    echo "🔄 Restarting Prometheus..."
+                    kubectl rollout restart deployment prometheus -n monitoring
+                    kubectl rollout status deployment prometheus -n monitoring --timeout=180s
+
+                    echo "🔄 Restarting Alertmanager..."
+                    kubectl rollout restart deployment alertmanager -n monitoring
+                    kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
                 '''
             }
         }
