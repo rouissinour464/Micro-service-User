@@ -1,39 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opensearch-dashboards
+  name: opensearch
   namespace: logging
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: opensearch-dashboards
+      app: opensearch
   template:
     metadata:
       labels:
-        app: opensearch-dashboards
+        app: opensearch
     spec:
       containers:
-        - name: opensearch-dashboards
-          image: public.ecr.aws/opensearchproject/opensearch-dashboards:1.3.14
+        - name: opensearch
+          image: public.ecr.aws/opensearchproject/opensearch:1.3.14
           ports:
-            - containerPort: 5601
+            - containerPort: 9200
           env:
-            - name: OPENSEARCH_HOSTS
-              value: '["http://opensearch:9200"]'
-            - name: DISABLE_SECURITY_DASHBOARDS_PLUGIN
+            - name: discovery.type
+              value: single-node
+            - name: plugins.security.disabled
               value: "true"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: opensearch-dashboards
+  name: opensearch
   namespace: logging
 spec:
-  type: NodePort
   selector:
-    app: opensearch-dashboards
+    app: opensearch
   ports:
-    - port: 5601
-      targetPort: 5601
-      nodePort: 30561
+    - port: 9200
+      targetPort: 9200
