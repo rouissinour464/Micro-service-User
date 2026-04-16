@@ -78,6 +78,7 @@ pipeline {
             steps {
                 sh '''
                     echo "📊 Deploying monitoring stack..."
+                    kubectl delete -k k8s/monitoring --ignore-not-found=true
                     kubectl apply -k k8s/monitoring
                     kubectl get pods -n monitoring
                 '''
@@ -92,17 +93,23 @@ pipeline {
 
                     kubectl rollout restart deployment alertmanager -n monitoring
                     kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
+
+                    kubectl rollout restart deployment grafana -n monitoring
+                    kubectl rollout status deployment grafana -n monitoring --timeout=180s
                 '''
             }
         }
 
-        // ✅ NOUVEAU STAGE ELK
-        stage('Deploy Logging (ELK Stack)') {
+        stage('Deploy Logging (OpenSearch Stack)') {
             steps {
                 sh '''
-                    echo "🪵 Deploying logging stack (ELK)..."
+                    echo "🪵 Deploying OpenSearch logging stack..."
+
+                    kubectl delete -k k8s/logging --ignore-not-found=true
                     kubectl apply -k k8s/logging
+
                     kubectl get pods -n logging
+                    kubectl get svc -n logging
                 '''
             }
         }
