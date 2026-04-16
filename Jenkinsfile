@@ -74,11 +74,14 @@ pipeline {
             }
         }
 
+        /* =======================
+           MONITORING STACK
+        ======================= */
         stage('Deploy Monitoring') {
             steps {
                 sh '''
                     echo "📊 Deploying monitoring stack..."
-                    kubectl delete -k k8s/monitoring --ignore-not-found=true
+                    kubectl delete -k k8s/monitoring --ignore-not-found=true || true
                     kubectl apply -k k8s/monitoring
                     kubectl get pods -n monitoring
                 '''
@@ -100,12 +103,19 @@ pipeline {
             }
         }
 
+        /* =======================
+           LOGGING STACK (OpenSearch)
+        ======================= */
         stage('Deploy Logging (OpenSearch Stack)') {
             steps {
                 sh '''
                     echo "🪵 Deploying OpenSearch logging stack..."
 
-                    kubectl delete -k k8s/logging --ignore-not-found=true
+                    # Suppression complète du namespace pour éviter les conflits Kustomize
+                    kubectl delete namespace logging --ignore-not-found=true || true
+                    sleep 10
+
+                    # Déploiement propre
                     kubectl apply -k k8s/logging
 
                     kubectl get pods -n logging
