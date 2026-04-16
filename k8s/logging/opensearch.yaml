@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: opensearch
-          image: opensearchproject/opensearch:1.3.14
+          image: public.ecr.aws/opensearchproject/opensearch:1.3.14
           ports:
             - containerPort: 9200
           env:
@@ -24,14 +24,14 @@ spec:
             - name: plugins.security.disabled
               value: "true"
             - name: OPENSEARCH_JAVA_OPTS
-              value: "-Xms256m -Xmx256m"
+              value: "-Xms512m -Xmx512m"
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "200m"
-            limits:
               memory: "512Mi"
-              cpu: "400m"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
