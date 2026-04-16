@@ -18,12 +18,18 @@ pipeline {
 
     stages {
 
+        /* =======================
+           SOURCE CODE
+        ======================= */
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        /* =======================
+           BUILD & TEST
+        ======================= */
         stage('Build & Test') {
             steps {
                 sh '''
@@ -33,6 +39,9 @@ pipeline {
             }
         }
 
+        /* =======================
+           DOCKER
+        ======================= */
         stage('Docker Build') {
             steps {
                 sh '''
@@ -54,6 +63,9 @@ pipeline {
             }
         }
 
+        /* =======================
+           APPLICATION DEPLOY
+        ======================= */
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
@@ -64,7 +76,7 @@ pipeline {
             }
         }
 
-        stage('Rollout Restart Auth Service') {
+        stage('Restart Auth Service') {
             steps {
                 sh '''
                     echo "🔄 Restarting auth-service..."
@@ -81,8 +93,10 @@ pipeline {
             steps {
                 sh '''
                     echo "📊 Deploying monitoring stack..."
+
                     kubectl delete -k k8s/monitoring --ignore-not-found=true || true
                     kubectl apply -k k8s/monitoring
+
                     kubectl get pods -n monitoring
                 '''
             }
@@ -105,18 +119,22 @@ pipeline {
 
         /* =======================
            LOGGING STACK (OpenSearch)
+           ❗ WITHOUT KUSTOMIZE ❗
         ======================= */
         stage('Deploy Logging (OpenSearch Stack)') {
             steps {
                 sh '''
                     echo "🪵 Deploying OpenSearch logging stack..."
 
-                    # Suppression complète du namespace pour éviter les conflits Kustomize
+                    # Nettoyage propre (évite conflits Jenkins + Kustomize)
                     kubectl delete namespace logging --ignore-not-found=true || true
                     sleep 10
 
-                    # Déploiement propre
-                    kubectl apply -k k8s/logging
+                    # Déploiement MANUEL (stable en CI/CD)
+                    kubectl apply -f k8s/logging/namespace.yaml
+                    kubectl apply -f k8s/logging/opensearch.yaml
+                    kubectl apply -f k8s/logging/opensearch-dashboards.yaml
+                    kubectl apply -f k8s/logging/fluent-bit.yaml
 
                     kubectl get pods -n logging
                     kubectl get svc -n logging
