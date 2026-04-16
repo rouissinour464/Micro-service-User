@@ -18,10 +18,16 @@ pipeline {
 
     stages {
 
+        /* =======================
+           SOURCE CODE
+        ======================= */
         stage('Checkout') {
             steps { checkout scm }
         }
 
+        /* =======================
+           BUILD & TEST
+        ======================= */
         stage('Build & Test') {
             steps {
                 sh '''
@@ -31,6 +37,9 @@ pipeline {
             }
         }
 
+        /* =======================
+           DOCKER
+        ======================= */
         stage('Docker Build') {
             steps {
                 sh 'docker build -t ${IMAGE}:${TAG} .'
@@ -50,6 +59,9 @@ pipeline {
             }
         }
 
+        /* =======================
+           APPLICATION DEPLOY
+        ======================= */
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
@@ -69,15 +81,15 @@ pipeline {
         }
 
         /* =======================
-           MONITORING STACK (FIXED ✅)
+           MONITORING STACK (SAFE ✅)
+           - Conserve le PVC Grafana
         ======================= */
         stage('Deploy Monitoring') {
             steps {
                 sh '''
                     echo "📊 Deploying monitoring stack (safe apply)..."
 
-                    # ❌ NO DELETE
-                    # ✅ Keep Grafana PVC & data
+                    # ✅ Pas de delete : on conserve le PVC Grafana
                     kubectl apply -k k8s/monitoring
 
                     kubectl get pods -n monitoring
@@ -103,19 +115,26 @@ pipeline {
 
         /* =======================
            LOGGING STACK (OpenSearch)
+           - Conserve le PVC OpenSearch (Discover persistant)
         ======================= */
         stage('Deploy Logging (OpenSearch Stack)') {
             steps {
                 sh '''
-                    kubectl delete namespace logging --ignore-not-found=true || true
-                    sleep 10
+                    echo "🪵 Deploying OpenSearch logging stack (with PVC)..."
 
+                    # ✅ Ne pas supprimer le namespace (conserve le PVC)
                     kubectl apply -f k8s/logging/namespace.yaml
+
+                    # ✅ PVC OpenSearch
+                    kubectl apply -f k8s/logging/opensearch-pvc.yaml
+
+                    # ✅ Composants OpenSearch
                     kubectl apply -f k8s/logging/opensearch.yaml
                     kubectl apply -f k8s/logging/opensearch-dashboards.yaml
                     kubectl apply -f k8s/logging/fluent-bit.yaml
 
                     kubectl get pods -n logging
+                    kubectl get pvc -n logging
                 '''
             }
         }
