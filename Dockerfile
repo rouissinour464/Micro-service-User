@@ -2,11 +2,16 @@
 FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 
+# Copier tout ce qui est nécessaire à Maven
 COPY pom.xml .
-RUN mvn dependency:go-offline -q
+COPY .mvn .mvn
+COPY mvnw .
+
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -B
 
 COPY src ./src
-RUN mvn package -DskipTests -q
+RUN ./mvnw package -DskipTests -B
 
 # ── Runtime stage ─────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
@@ -20,8 +25,11 @@ RUN chown pfe:pfe app.jar
 USER pfe
 EXPOSE 8081
 
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+ENTRYPOINT [
+  "java",
+  "-XX:+UseContainerSupport",
+  "-XX:MaxRAMPercentage=75.0",
+  "-Djava.security.egd=file:/dev/./urandom",
+  "-jar",
+  "app.jar"
+]
