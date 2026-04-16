@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     triggers {
-        cron('H */6 * * *')   
+        cron('H */6 * * *')
     }
 
     tools {
@@ -87,13 +87,22 @@ pipeline {
         stage('Restart Monitoring') {
             steps {
                 sh '''
-                    echo "🔄 Restarting Prometheus..."
                     kubectl rollout restart deployment prometheus -n monitoring
                     kubectl rollout status deployment prometheus -n monitoring --timeout=180s
 
-                    echo "🔄 Restarting Alertmanager..."
                     kubectl rollout restart deployment alertmanager -n monitoring
                     kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
+                '''
+            }
+        }
+
+        // ✅ NOUVEAU STAGE ELK
+        stage('Deploy Logging (ELK Stack)') {
+            steps {
+                sh '''
+                    echo "🪵 Deploying logging stack (ELK)..."
+                    kubectl apply -k k8s/logging
+                    kubectl get pods -n logging
                 '''
             }
         }
@@ -101,7 +110,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ APPLICATION + MONITORING DEPLOYED SUCCESSFULLY 🎉"
+            echo "✅ APPLICATION + MONITORING + LOGGING DEPLOYED SUCCESSFULLY 🎉"
         }
         failure {
             echo "❌ PIPELINE FAILED"
