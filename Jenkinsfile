@@ -18,18 +18,10 @@ pipeline {
 
     stages {
 
-        /* =======================
-           SOURCE CODE
-        ======================= */
         stage('Checkout') {
-            steps {
-                checkout scm
-            }
+            steps { checkout scm }
         }
 
-        /* =======================
-           BUILD & TEST
-        ======================= */
         stage('Build & Test') {
             steps {
                 sh '''
@@ -39,14 +31,9 @@ pipeline {
             }
         }
 
-        /* =======================
-           DOCKER
-        ======================= */
         stage('Docker Build') {
             steps {
-                sh '''
-                    docker build -t ${IMAGE}:${TAG} .
-                '''
+                sh 'docker build -t ${IMAGE}:${TAG} .'
             }
         }
 
@@ -63,13 +50,9 @@ pipeline {
             }
         }
 
-        /* =======================
-           APPLICATION DEPLOY
-        ======================= */
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
-                    echo "🚀 Deploying application..."
                     kubectl apply -k k8s/app
                     kubectl get pods -n gestion-projet
                 '''
@@ -79,7 +62,6 @@ pipeline {
         stage('Restart Auth Service') {
             steps {
                 sh '''
-                    echo "🔄 Restarting auth-service..."
                     kubectl rollout restart deployment auth-deployment -n gestion-projet
                     kubectl rollout status deployment auth-deployment -n gestion-projet --timeout=180s
                 '''
@@ -87,17 +69,19 @@ pipeline {
         }
 
         /* =======================
-           MONITORING STACK
+           MONITORING STACK (FIXED ✅)
         ======================= */
         stage('Deploy Monitoring') {
             steps {
                 sh '''
-                    echo "📊 Deploying monitoring stack..."
+                    echo "📊 Deploying monitoring stack (safe apply)..."
 
-                    kubectl delete -k k8s/monitoring --ignore-not-found=true || true
+                    # ❌ NO DELETE
+                    # ✅ Keep Grafana PVC & data
                     kubectl apply -k k8s/monitoring
 
                     kubectl get pods -n monitoring
+                    kubectl get pvc -n monitoring
                 '''
             }
         }
@@ -119,25 +103,19 @@ pipeline {
 
         /* =======================
            LOGGING STACK (OpenSearch)
-           ❗ WITHOUT KUSTOMIZE ❗
         ======================= */
         stage('Deploy Logging (OpenSearch Stack)') {
             steps {
                 sh '''
-                    echo "🪵 Deploying OpenSearch logging stack..."
-
-                    # Nettoyage propre (évite conflits Jenkins + Kustomize)
                     kubectl delete namespace logging --ignore-not-found=true || true
                     sleep 10
 
-                    # Déploiement MANUEL (stable en CI/CD)
                     kubectl apply -f k8s/logging/namespace.yaml
                     kubectl apply -f k8s/logging/opensearch.yaml
                     kubectl apply -f k8s/logging/opensearch-dashboards.yaml
                     kubectl apply -f k8s/logging/fluent-bit.yaml
 
                     kubectl get pods -n logging
-                    kubectl get svc -n logging
                 '''
             }
         }
