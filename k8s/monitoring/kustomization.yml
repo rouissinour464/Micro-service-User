@@ -6,3 +6,4 @@ resources:
   - grafana.yml
   - node-exporter.yml
   - servicemonitor.yml
+  - grafana-pvc.yaml
