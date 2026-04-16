@@ -1,47 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: elasticsearch
+  name: opensearch
   namespace: logging
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: elasticsearch
+      app: opensearch
   template:
     metadata:
       labels:
-        app: elasticsearch
+        app: opensearch
     spec:
       containers:
-        - name: elasticsearch
-          image: docker.elastic.co/elasticsearch/elasticsearch:7.17.16
+        - name: opensearch
+          image: opensearchproject/opensearch:1.3.14
           ports:
             - containerPort: 9200
           env:
             - name: discovery.type
               value: single-node
-            - name: xpack.security.enabled
-              value: "false"
-            - name: ES_JAVA_OPTS
-              value: "-Xms512m -Xmx512m"
+            - name: plugins.security.disabled
+              value: "true"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms256m -Xmx256m"
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "250m"
+              memory: "256Mi"
+              cpu: "200m"
             limits:
-              memory: "1Gi"
-              cpu: "500m"
-
+              memory: "512Mi"
+              cpu: "400m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: elasticsearch
+  name: opensearch
   namespace: logging
 spec:
   selector:
-    app: elasticsearch
+    app: opensearch
   ports:
     - port: 9200
       targetPort: 9200
