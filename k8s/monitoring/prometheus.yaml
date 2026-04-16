@@ -25,6 +25,11 @@ data:
           - targets:
               - auth-service.gestion-projet.svc.cluster.local:8081
 
+      - job_name: "node-exporter"
+        static_configs:
+          - targets:
+              - node-exporter.monitoring.svc.cluster.local:9100
+
 ---
 apiVersion: apps/v1
 kind: Deployment
