@@ -1,33 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auth-deployment
+  name: user-deployment
   namespace: gestion-projet
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: auth-service
+      app: user-service
   template:
     metadata:
       labels:
-        app: auth-service
+        app: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
-        - name: auth-service
-          image: nour292/auth-service:build-103
+        - name: user-service
+          image: nour292/user-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
 
-          # ✅ CHARGER TOUTE LA CONFIG D’UN COUP
           envFrom:
             - configMapRef:
-                name: auth-config
+                name: user-config
             - secretRef:
-                name: auth-secret
+                name: user-secret
 
-          # ✅ PROBES (IMPORTANT POUR JENKINS)
           readinessProbe:
             httpGet:
               path: /actuator/health
