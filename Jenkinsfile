@@ -39,7 +39,7 @@ pipeline {
         stage('Build & Test') {
             steps {
                 sh '''
-                    set -euxo pipefail
+                    set -eux
                     chmod +x mvnw
                     ./mvnw clean verify
                 '''
@@ -52,7 +52,7 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh '''
-                    set -euxo pipefail
+                    set -eux
                     docker build -t ${IMAGE}:${TAG} .
                 '''
             }
@@ -64,7 +64,7 @@ pipeline {
                     string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')
                 ]) {
                     sh '''
-                        set -euxo pipefail
+                        set -eux
                         echo "$DOCKER_PASSWORD" | docker login -u nour292 --password-stdin
                         docker push ${IMAGE}:${TAG}
                         docker logout
@@ -79,7 +79,7 @@ pipeline {
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
-                    set -euxo pipefail
+                    set -eux
                     kubectl apply -k k8s/app
                     kubectl get pods -n gestion-projet
                 '''
@@ -89,7 +89,7 @@ pipeline {
         stage('Restart Auth Service') {
             steps {
                 sh '''
-                    set -euxo pipefail
+                    set -eux
                     kubectl rollout restart deployment auth-deployment -n gestion-projet
                     kubectl rollout status deployment auth-deployment -n gestion-projet --timeout=180s
                 '''
@@ -102,7 +102,7 @@ pipeline {
         stage('Deploy Monitoring') {
             steps {
                 sh '''
-                    set -euxo pipefail
+                    set -eux
                     kubectl apply -k k8s/monitoring
                     kubectl get pods -n monitoring
                     kubectl get pvc -n monitoring
@@ -113,8 +113,7 @@ pipeline {
         stage('Restart Monitoring') {
             steps {
                 sh '''
-                    set -euxo pipefail
-
+                    set -eux
                     kubectl rollout restart deployment prometheus -n monitoring
                     kubectl rollout status deployment prometheus -n monitoring --timeout=180s
 
