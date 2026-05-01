@@ -2,7 +2,5 @@ resources:
   - namespace.yml
   - configmap.yml
   - secret.yml
-  - pv.yml
-  - pvc.yml
   - deployment.yml
   - service.yml
