@@ -28,16 +28,18 @@ public class SecurityConfig {
 
         http
             .csrf(AbstractHttpConfigurer::disable)
-            .cors(AbstractHttpConfigurer::disable)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ ACTUATOR OUVERT (PROMETHEUS)
-                .requestMatchers("/actuator/**").permitAll()
+                // ✅ ACTUATOR (PUBLIC pour Prometheus)
+                .requestMatchers(
+                    "/actuator/prometheus",
+                    "/actuator/health"
+                ).permitAll()
 
-                // ✅ PUBLIC
+                // ✅ AUTH PUBLIC
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
@@ -45,11 +47,11 @@ public class SecurityConfig {
                 // ✅ ADMIN
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                // ✅ LE RESTE PROTÉGÉ
+                // ✅ RESTE SÉCURISÉ
                 .anyRequest().authenticated()
-            );
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
