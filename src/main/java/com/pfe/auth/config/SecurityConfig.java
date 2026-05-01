@@ -33,21 +33,21 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ ACTUATOR (PUBLIC pour Prometheus)
+                // ✅ ACTUATOR PUBLIC POUR PROMETHEUS
                 .requestMatchers(
-                    "/actuator/prometheus",
-                    "/actuator/health"
+                        "/actuator/prometheus",
+                        "/actuator/health"
                 ).permitAll()
 
-                // ✅ AUTH PUBLIC
+                // ✅ AUTH PUBLIQUE
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register-admin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 
-                // ✅ ADMIN
+                // ✅ ZONE ADMIN
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                // ✅ RESTE SÉCURISÉ
+                // ✅ TOUT LE RESTE PROTÉGÉ
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
