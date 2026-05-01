@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: auth-config
+  name: user-config
   namespace: gestion-projet
 data:
   SERVER_PORT: "8081"
 
-  SPRING_APPLICATION_NAME: "auth-service"
+  SPRING_APPLICATION_NAME: "user-service"
 
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
   MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
