@@ -18,7 +18,7 @@ pipeline {
     environment {
         REGISTRY   = "nour292"
         IMAGE      = "${REGISTRY}/auth-service"
-        TAG        = "build-${BUILD_NUMBER}"
+        TAG        = "latest"
         KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
