@@ -1,34 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-deployment
+  name: auth-deployment
   namespace: gestion-projet
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: user-service
+      app: auth-service
   template:
     metadata:
       labels:
-        app: user-service
+        app: auth-service
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8081"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
-        - name: user-service
-          image: nour292/user-service:latest
+        - name: auth-service
+          image: nour292/auth-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
 
           envFrom:
             - configMapRef:
-                name: user-config
+                name: auth-config
             - secretRef:
-                name: user-secret
+                name: auth-secret
 
           readinessProbe:
             httpGet:
