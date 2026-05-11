@@ -3,14 +3,8 @@ package com.pfe.auth.unit;
 import com.pfe.auth.dto.auth.*;
 import com.pfe.auth.dto.user.CreateUserRequest;
 import com.pfe.auth.dto.user.UserInfo;
-import com.pfe.auth.entity.AdminCode;
-import com.pfe.auth.entity.Role;
-import com.pfe.auth.entity.RoleName;
-import com.pfe.auth.entity.User;
-import com.pfe.auth.repository.AdminCodeRepository;
-import com.pfe.auth.repository.RoleRepository;
-import com.pfe.auth.repository.UserRepository;
-import com.pfe.auth.repository.RefreshTokenRepository;
+import com.pfe.auth.entity.*;
+import com.pfe.auth.repository.*;
 import com.pfe.auth.security.JwtUtils;
 import com.pfe.auth.service.AuthService;
 
@@ -69,9 +63,7 @@ class AuthServiceUnitTest {
         adminCode.setUsed(false);
     }
 
-    // ======================================================
-    // ✅ REGISTER ADMIN
-    // ======================================================
+    // ================= REGISTER ADMIN =================
     @Test
     void registerAdmin_success() {
 
@@ -90,12 +82,11 @@ class AuthServiceUnitTest {
         when(jwtUtils.generateToken(anyLong(), anyString(), any(Role.class)))
                 .thenReturn("TOKEN123");
 
-        AdminRegisterRequest req = new AdminRegisterRequest(
-                "Admin Test",
-                "admin@pfe.dz",
-                "password123",
-                "FAC-ADMIN-001"
-        );
+        AdminRegisterRequest req = new AdminRegisterRequest();
+        req.setFullName("Admin Test");
+        req.setEmail("admin@pfe.dz");
+        req.setPassword("password123");
+        req.setAdminCode("FAC-ADMIN-001");
 
         AuthResponse res = authService.registerAdmin(req);
 
@@ -107,9 +98,7 @@ class AuthServiceUnitTest {
         verify(adminCodeRepository).save(argThat(AdminCode::isUsed));
     }
 
-    // ======================================================
-    // ✅ LOGIN
-    // ======================================================
+    // ================= LOGIN =================
     @Test
     void login_success() {
 
@@ -119,16 +108,16 @@ class AuthServiceUnitTest {
                 .thenReturn("TOKEN123");
         when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        LoginRequest req = new LoginRequest("admin@pfe.dz", "password123");
+        LoginRequest req = new LoginRequest();
+        req.setEmail("admin@pfe.dz");
+        req.setPassword("password123");
 
         AuthResponse res = authService.login(req);
 
         assertThat(res.getToken()).isEqualTo("TOKEN123");
     }
 
-    // ======================================================
-    // ✅ CREATE USER
-    // ======================================================
+    // ================= CREATE USER =================
     @Test
     void createTeacher_success() {
 
@@ -144,12 +133,11 @@ class AuthServiceUnitTest {
 
         when(userRepository.save(any())).thenReturn(teacher);
 
-        CreateUserRequest req = new CreateUserRequest(
-                "Teacher Test",
-                "teacher@test.com",
-                "pass123",
-                "TEACHER"
-        );
+        CreateUserRequest req = new CreateUserRequest();
+        req.setFullName("Teacher Test");
+        req.setEmail("teacher@test.com");
+        req.setPassword("pass123");
+        req.setRole("TEACHER");
 
         UserInfo info = authService.createUser(req, "admin@pfe.dz");
 
@@ -157,9 +145,7 @@ class AuthServiceUnitTest {
         assertThat(info.getRole()).isEqualTo("ROLE_ENCADRANT");
     }
 
-    // ======================================================
-    // ✅ LOGOUT
-    // ======================================================
+    // ================= LOGOUT =================
     @Test
     void logout_success() {
 
