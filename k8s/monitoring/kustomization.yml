@@ -1,0 +1,9 @@
+resources:
+  - namespace.yml
+  - prometheus.yaml
+  - prometheus-alerts.yaml
+  - alertmanager.yml
+  - grafana.yml
+  - node-exporter.yml
+  - servicemonitor.yml
+  - grafana-pvc.yaml
