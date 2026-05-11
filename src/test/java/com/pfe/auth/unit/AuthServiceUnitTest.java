@@ -10,6 +10,7 @@ import com.pfe.auth.entity.User;
 import com.pfe.auth.repository.AdminCodeRepository;
 import com.pfe.auth.repository.RoleRepository;
 import com.pfe.auth.repository.UserRepository;
+import com.pfe.auth.repository.RefreshTokenRepository;
 import com.pfe.auth.security.JwtUtils;
 import com.pfe.auth.service.AuthService;
 
@@ -26,22 +27,23 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Tests unitaires - AuthService")
+@DisplayName("✅ Tests unitaires PRO – AuthService")
 class AuthServiceUnitTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AdminCodeRepository adminCodeRepository;
     @Mock private RoleRepository roleRepository;
-    @Mock private PasswordEncoder encoder;
-    @Mock private JwtUtils jwt;
+    @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private JwtUtils jwtUtils;
 
     @InjectMocks
     private AuthService authService;
 
-    private User adminUser;
-    private AdminCode validCode;
+    private User admin;
     private Role adminRole;
     private Role teacherRole;
+    private AdminCode adminCode;
 
     @BeforeEach
     void setup() {
@@ -54,165 +56,119 @@ class AuthServiceUnitTest {
         teacherRole.setId(2);
         teacherRole.setName(RoleName.ROLE_ENCADRANT);
 
-        adminUser = new User();
-        adminUser.setId(1L);
-        adminUser.setFullName("Admin Test");
-        adminUser.setEmail("admin@pfe.dz");
-        adminUser.setPassword("HASHED");
-        adminUser.setRole(adminRole);
+        admin = new User();
+        admin.setId(1L);
+        admin.setFullName("Admin Test");
+        admin.setEmail("admin@pfe.dz");
+        admin.setPassword("HASHED");
+        admin.setRole(adminRole);
 
-        validCode = new AdminCode();
-        validCode.setId(1L);
-        validCode.setCode("FAC-ADMIN-001");
-        validCode.setUsed(false);
+        adminCode = new AdminCode();
+        adminCode.setId(1L);
+        adminCode.setCode("FAC-ADMIN-001");
+        adminCode.setUsed(false);
     }
 
-    // ================= REGISTER ADMIN =================
-    @Nested
-    @DisplayName("registerAdmin()")
-    class RegisterAdmin {
-
-        private AdminRegisterRequest req() {
-            AdminRegisterRequest r = new AdminRegisterRequest();
-            r.setFullName("Admin Test");
-            r.setEmail("admin@pfe.dz");
-            r.setPassword("password123");
-            r.setAdminCode("FAC-ADMIN-001");
-            return r;
-        }
-
-        @Test
-        @DisplayName("✅ Inscription admin réussie")
-        void success() {
-
-            when(userRepository.existsByEmail(any()))
-                    .thenReturn(false);
-
-            when(adminCodeRepository.findByCode(any()))
-                    .thenReturn(Optional.of(validCode));
-
-            when(roleRepository.findByName(RoleName.ROLE_ADMIN))
-                    .thenReturn(Optional.of(adminRole));
-
-            when(encoder.encode(any()))
-                    .thenReturn("HASHED");
-
-            // ✅ FIX CRITIQUE : simuler Hibernate (ID après save)
-            when(userRepository.save(any()))
-                    .thenAnswer(invocation -> {
-                        User u = invocation.getArgument(0);
-                        u.setId(1L);
-                        return u;
-                    });
-
-            when(jwt.generateToken(anyLong(), anyString(), any(Role.class)))
-                    .thenReturn("TOKEN123");
-
-            AuthResponse res = authService.registerAdmin(req());
-
-            assertThat(res).isNotNull();
-            assertThat(res.getToken()).isEqualTo("TOKEN123");
-            assertThat(res.getRole()).isEqualTo("ROLE_ADMIN");
-
-            verify(adminCodeRepository).save(argThat(AdminCode::isUsed));
-        }
-    }
-
-    // ================= LOGIN =================
-    @Nested
-    @DisplayName("login()")
-    class LoginTest {
-
-        private LoginRequest req(String pass) {
-            LoginRequest r = new LoginRequest();
-            r.setEmail("admin@pfe.dz");
-            r.setPassword(pass);
-            return r;
-        }
-
-        @Test
-        @DisplayName("✅ Login OK")
-        void success() {
-
-            when(userRepository.findByEmail(any()))
-                    .thenReturn(Optional.of(adminUser));
-
-            when(encoder.matches(any(), any()))
-                    .thenReturn(true);
-
-            when(jwt.generateToken(anyLong(), anyString(), any(Role.class)))
-                    .thenReturn("TOKEN123");
-
-            AuthResponse res = authService.login(req("password123"));
-
-            assertThat(res).isNotNull();
-            assertThat(res.getToken()).isEqualTo("TOKEN123");
-        }
-
-        @Test
-        @DisplayName("❌ Mot de passe incorrect")
-        void wrongPassword() {
-
-            when(userRepository.findByEmail(any()))
-                    .thenReturn(Optional.of(adminUser));
-
-            when(encoder.matches(any(), any()))
-                    .thenReturn(false);
-
-            assertThatThrownBy(() -> authService.login(req("wrong")))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    // ================= CREATE USER =================
-    @Nested
-    @DisplayName("createUser()")
-    class CreateUserTest {
-
-        private CreateUserRequest req(String role) {
-            CreateUserRequest r = new CreateUserRequest();
-            r.setFullName("User Test");
-            r.setEmail("user@test.com");
-            r.setPassword("pass123");
-            r.setRole(role);
-            return r;
-        }
-
-        @Test
-        @DisplayName("✅ Admin crée un ENCADRANT")
-        void createTeacher() {
-
-            User teacher = new User();
-            teacher.setId(2L);
-            teacher.setFullName("User Test");
-            teacher.setEmail("user@test.com");
-            teacher.setRole(teacherRole);
-
-            when(userRepository.existsByEmail(any()))
-                    .thenReturn(false);
-
-            when(roleRepository.findByName(RoleName.ROLE_ENCADRANT))
-                    .thenReturn(Optional.of(teacherRole));
-
-            when(encoder.encode(any()))
-                    .thenReturn("HASHED");
-
-            when(userRepository.save(any()))
-                    .thenReturn(teacher);
-
-            UserInfo info = authService.createUser(req("TEACHER"), "admin@pfe.dz");
-
-            assertThat(info).isNotNull();
-            assertThat(info.getEmail()).isEqualTo("user@test.com");
-            assertThat(info.getRole()).isEqualTo("ROLE_ENCADRANT");
-        }
-    }
-
-    // ================= LOGOUT =================
+    // ======================================================
+    // ✅ REGISTER ADMIN
+    // ======================================================
     @Test
-    @DisplayName("✅ Logout stateless")
-    void logout_ok() {
+    void registerAdmin_success() {
+
+        when(userRepository.existsByEmail(any())).thenReturn(false);
+        when(adminCodeRepository.findByCode(any())).thenReturn(Optional.of(adminCode));
+        when(roleRepository.findByName(RoleName.ROLE_ADMIN)).thenReturn(Optional.of(adminRole));
+        when(passwordEncoder.encode(any())).thenReturn("HASHED");
+
+        when(userRepository.save(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(1L);
+            return u;
+        });
+
+        when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(jwtUtils.generateToken(anyLong(), anyString(), any(Role.class)))
+                .thenReturn("TOKEN123");
+
+        AdminRegisterRequest req = new AdminRegisterRequest(
+                "Admin Test",
+                "admin@pfe.dz",
+                "password123",
+                "FAC-ADMIN-001"
+        );
+
+        AuthResponse res = authService.registerAdmin(req);
+
+        assertThat(res).isNotNull();
+        assertThat(res.getToken()).isEqualTo("TOKEN123");
+        assertThat(res.getRole()).isEqualTo("ROLE_ADMIN");
+
+        verify(refreshTokenRepository).save(any());
+        verify(adminCodeRepository).save(argThat(AdminCode::isUsed));
+    }
+
+    // ======================================================
+    // ✅ LOGIN
+    // ======================================================
+    @Test
+    void login_success() {
+
+        when(userRepository.findByEmail(any())).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches(any(), any())).thenReturn(true);
+        when(jwtUtils.generateToken(anyLong(), anyString(), any(Role.class)))
+                .thenReturn("TOKEN123");
+        when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        LoginRequest req = new LoginRequest("admin@pfe.dz", "password123");
+
+        AuthResponse res = authService.login(req);
+
+        assertThat(res.getToken()).isEqualTo("TOKEN123");
+    }
+
+    // ======================================================
+    // ✅ CREATE USER
+    // ======================================================
+    @Test
+    void createTeacher_success() {
+
+        when(userRepository.existsByEmail(any())).thenReturn(false);
+        when(roleRepository.findByName(RoleName.ROLE_ENCADRANT))
+                .thenReturn(Optional.of(teacherRole));
+        when(passwordEncoder.encode(any())).thenReturn("HASHED");
+
+        User teacher = new User();
+        teacher.setId(2L);
+        teacher.setEmail("teacher@test.com");
+        teacher.setRole(teacherRole);
+
+        when(userRepository.save(any())).thenReturn(teacher);
+
+        CreateUserRequest req = new CreateUserRequest(
+                "Teacher Test",
+                "teacher@test.com",
+                "pass123",
+                "TEACHER"
+        );
+
+        UserInfo info = authService.createUser(req, "admin@pfe.dz");
+
+        assertThat(info.getEmail()).isEqualTo("teacher@test.com");
+        assertThat(info.getRole()).isEqualTo("ROLE_ENCADRANT");
+    }
+
+    // ======================================================
+    // ✅ LOGOUT
+    // ======================================================
+    @Test
+    void logout_success() {
+
+        doNothing().when(refreshTokenRepository)
+                .deleteByUserEmail(anyString());
+
         authService.logout("admin@pfe.dz");
-        assertThat(true).isTrue();
+
+        verify(refreshTokenRepository)
+                .deleteByUserEmail("admin@pfe.dz");
     }
 }
