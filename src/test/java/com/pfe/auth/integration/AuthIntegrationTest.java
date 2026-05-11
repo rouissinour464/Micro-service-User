@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false) // ✅ FIX CRITIQUE
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthIntegrationTest {
@@ -33,9 +33,6 @@ class AuthIntegrationTest {
 
     private static String adminAccessToken;
 
-    // ============================================================
-    // ✅ SETUP
-    // ============================================================
     @BeforeEach
     void setup() {
 
@@ -61,9 +58,6 @@ class AuthIntegrationTest {
         }
     }
 
-    // ============================================================
-    // ✅ 1. REGISTER ADMIN
-    // ============================================================
     @Test
     @Order(1)
     void registerAdmin_success() throws Exception {
@@ -81,17 +75,11 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.token").exists())
                 .andReturn();
 
-        AuthResponse res = mapper.readValue(
-                result.getResponse().getContentAsString(),
-                AuthResponse.class
-        );
-
-        adminAccessToken = res.getToken();
+        adminAccessToken = mapper
+                .readValue(result.getResponse().getContentAsString(), AuthResponse.class)
+                .getToken();
     }
 
-    // ============================================================
-    // ✅ 2. LOGIN
-    // ============================================================
     @Test
     @Order(2)
     void login_success() throws Exception {
@@ -107,15 +95,11 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.token").exists())
                 .andReturn();
 
-        adminAccessToken = mapper.readValue(
-                result.getResponse().getContentAsString(),
-                AuthResponse.class
-        ).getToken();
+        adminAccessToken = mapper
+                .readValue(result.getResponse().getContentAsString(), AuthResponse.class)
+                .getToken();
     }
 
-    // ============================================================
-    // ✅ 3. CREATE TEACHER
-    // ============================================================
     @Test
     @Order(3)
     void createTeacher_success() throws Exception {
@@ -135,9 +119,6 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.role").value("ROLE_ENCADRANT"));
     }
 
-    // ============================================================
-    // ✅ 4. PROFILE
-    // ============================================================
     @Test
     @Order(4)
     void getProfile_success() throws Exception {
@@ -148,9 +129,6 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.email").value("admin@test.com"));
     }
 
-    // ============================================================
-    // ✅ 5. PROFILE sans token
-    // ============================================================
     @Test
     @Order(5)
     void getProfile_withoutToken_forbidden() throws Exception {
