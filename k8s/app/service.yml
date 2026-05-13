@@ -4,11 +4,12 @@ metadata:
   name: auth-service
   namespace: gestion-projet
 spec:
+  type: ClusterIP
   selector:
-    app: auth-service   
+    app: auth-service
   ports:
     - name: http
       port: 8081
       targetPort: 8081
       protocol: TCP
-  type: ClusterIP
+ 

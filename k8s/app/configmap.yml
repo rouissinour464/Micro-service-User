@@ -5,15 +5,10 @@ metadata:
   namespace: gestion-projet
 data:
   SERVER_PORT: "8081"
-
   SPRING_APPLICATION_NAME: "auth-service"
-
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
   MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
-
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://ep-wandering-rice-a4uh9a3k.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
   SPRING_JPA_SHOW_SQL: "true"
-
   LOGGING_LEVEL_ROOT: "INFO"
+ 
