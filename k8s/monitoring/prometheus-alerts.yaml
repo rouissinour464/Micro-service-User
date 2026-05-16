@@ -8,7 +8,6 @@ data:
     groups:
     - name: auth-service-alerts
       rules:
-
       - alert: AuthServiceDown
         expr: up{job="auth-service"} == 0
         labels:
@@ -18,32 +17,28 @@ data:
           summary: "Auth Service DOWN"
           description: "auth-service ne répond plus"
 
-      - alert: HighJVMMemoryUsage
+      - alert: AuthHighJVMMemory
         expr: |
-          sum by (job) (
-            jvm_memory_used_bytes{job="auth-service", area="heap"}
-          )
+          sum by (job) (jvm_memory_used_bytes{job="auth-service", area="heap"})
           /
-          sum by (job) (
-            jvm_memory_max_bytes{job="auth-service", area="heap"}
-          ) > 0.8
+          sum by (job) (jvm_memory_max_bytes{job="auth-service", area="heap"}) > 0.8
         labels:
           severity: warning
           service: auth-service
         annotations:
-          summary: "High JVM Memory Usage"
-          description: "Heap JVM > 80%"
+          summary: "Auth High JVM Memory"
+          description: "Heap JVM auth-service > 80%"
 
-      - alert: HighCPUUsage
+      - alert: AuthHighCPU
         expr: process_cpu_usage{job="auth-service"} > 0.8
         labels:
           severity: warning
           service: auth-service
         annotations:
-          summary: "High CPU Usage"
-          description: "CPU > 80%"
+          summary: "Auth High CPU"
+          description: "CPU auth-service > 80%"
 
-      - alert: HighDBConnections
+      - alert: AuthHighDBConnections
         expr: |
           hikaricp_connections_active{job="auth-service"}
           /
@@ -52,5 +47,113 @@ data:
           severity: warning
           service: auth-service
         annotations:
-          summary: "High DB connections usage"
-          description: "DB connections > 80%"
+          summary: "Auth High DB Connections"
+          description: "DB connections auth-service > 80%"
+
+    - name: stage-service-alerts
+      rules:
+      - alert: StageServiceDown
+        expr: up{job="stage-service"} == 0
+        labels:
+          severity: critical
+          service: stage-service
+        annotations:
+          summary: "Stage Service DOWN"
+          description: "stage-service ne répond plus"
+
+      - alert: StageHighJVMMemory
+        expr: |
+          sum by (job) (jvm_memory_used_bytes{job="stage-service", area="heap"})
+          /
+          sum by (job) (jvm_memory_max_bytes{job="stage-service", area="heap"}) > 0.8
+        labels:
+          severity: warning
+          service: stage-service
+        annotations:
+          summary: "Stage High JVM Memory"
+          description: "Heap JVM stage-service > 80%"
+
+      - alert: StageHighCPU
+        expr: process_cpu_usage{job="stage-service"} > 0.8
+        labels:
+          severity: warning
+          service: stage-service
+        annotations:
+          summary: "Stage High CPU"
+          description: "CPU stage-service > 80%"
+
+      - alert: StageHighDBConnections
+        expr: |
+          hikaricp_connections_active{job="stage-service"}
+          /
+          hikaricp_connections_max{job="stage-service"} > 0.8
+        labels:
+          severity: warning
+          service: stage-service
+        annotations:
+          summary: "Stage High DB Connections"
+          description: "DB connections stage-service > 80%"
+
+    - name: gateway-service-alerts
+      rules:
+      - alert: GatewayServiceDown
+        expr: up{job="gateway-service"} == 0
+        labels:
+          severity: critical
+          service: gateway-service
+        annotations:
+          summary: "API Gateway DOWN"
+          description: "gateway-service ne répond plus"
+
+      - alert: GatewayHighJVMMemory
+        expr: |
+          sum by (job) (jvm_memory_used_bytes{job="gateway-service", area="heap"})
+          /
+          sum by (job) (jvm_memory_max_bytes{job="gateway-service", area="heap"}) > 0.8
+        labels:
+          severity: warning
+          service: gateway-service
+        annotations:
+          summary: "Gateway High JVM Memory"
+          description: "Heap JVM gateway-service > 80%"
+
+      - alert: GatewayHighCPU
+        expr: process_cpu_usage{job="gateway-service"} > 0.8
+        labels:
+          severity: warning
+          service: gateway-service
+        annotations:
+          summary: "Gateway High CPU"
+          description: "CPU gateway-service > 80%"
+
+    - name: frontend-alerts
+      rules:
+      - alert: FrontendDown
+        expr: up{job="frontend"} == 0
+        labels:
+          severity: critical
+          service: frontend
+        annotations:
+          summary: "Frontend DOWN"
+          description: "frontend-auth nginx ne répond plus"
+
+    - name: node-alerts
+      rules:
+      - alert: NodeHighMemory
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node High Memory"
+          description: "Mémoire VM > 85%"
+
+      - alert: NodeHighDisk
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"}
+          / node_filesystem_size_bytes{mountpoint="/"})) > 0.85
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node High Disk"
+          description: "Disque VM > 85%"

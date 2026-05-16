@@ -4,6 +4,6 @@ resources:
   - prometheus-alerts.yaml
   - alertmanager.yml
   - grafana.yml
+  - grafana-pvc.yaml
   - node-exporter.yml
   - servicemonitor.yml
-  - grafana-pvc.yaml

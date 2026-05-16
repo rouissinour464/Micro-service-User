@@ -14,3 +14,54 @@ spec:
     - port: http
       path: /actuator/prometheus
       interval: 5s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: stage-service-monitor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: stage-service
+  namespaceSelector:
+    matchNames:
+      - gestion-projet
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 5s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gateway-service-monitor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: gateway-service
+  namespaceSelector:
+    matchNames:
+      - gestion-projet
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 5s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: frontend-monitor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: frontend-auth
+  namespaceSelector:
+    matchNames:
+      - gestion-projet
+  endpoints:
+    - port: http
+      path: /stub_status
+      interval: 15s
