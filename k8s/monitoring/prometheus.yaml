@@ -53,7 +53,9 @@ data:
       - job_name: "node-exporter"
         static_configs:
           - targets:
-              - node-exporter.monitoring.svc.cluster.local:9100
+              - 172.18.30.255:9100
+            labels:
+              application: "node-exporter"
 
 ---
 apiVersion: apps/v1
