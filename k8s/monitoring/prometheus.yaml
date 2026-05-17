@@ -43,10 +43,10 @@ data:
               application: "gateway-service"
 
       - job_name: "frontend"
-        metrics_path: /stub_status
+        metrics_path: /metrics
         static_configs:
           - targets:
-              - frontend-auth.gestion-projet.svc.cluster.local:80
+              - frontend-auth.gestion-projet.svc.cluster.local:9113
             labels:
               application: "frontend"
 
