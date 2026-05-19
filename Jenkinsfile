@@ -35,16 +35,46 @@ pipeline {
             }
         }
 
-        /* ✅ BUILD + TEST + SONAR */
-        stage('Build + Test + Sonar') {
+        /* ======================= */
+        stage('Build') {
+            steps {
+                sh '''
+                    set -eux
+                    chmod +x mvnw
+                    ./mvnw clean compile
+                '''
+            }
+        }
+
+        /* ======================= */
+        stage('Unit Tests') {
+            steps {
+                sh '''
+                    set -eux
+                    ./mvnw test
+                '''
+            }
+        }
+
+        /* ======================= */
+        stage('Integration Tests') {
+            steps {
+                sh '''
+                    set -eux
+                    ./mvnw verify
+                '''
+            }
+        }
+
+        /* ✅ SONARCLOUD AJOUTÉ */
+        stage('SonarCloud Analysis') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh '''
                             set -eux
-                            chmod +x mvnw
 
-                            ./mvnw clean verify sonar:sonar \
+                            ./mvnw sonar:sonar \
                               -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                               -Dsonar.organization=${SONAR_ORG} \
                               -Dsonar.host.url=https://sonarcloud.io \
@@ -64,21 +94,29 @@ pipeline {
             }
         }
 
-        /* ✅ DOCKER BUILD + PUSH */
-        stage('Docker Build & Push') {
+        /* ======================= */
+        stage('Docker Build') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')]) {
+                sh '''
+                    set -eux
+                    docker build -t ${IMAGE}:${TAG} .
+                '''
+            }
+        }
+
+        /* ======================= */
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')
+                ]) {
                     sh '''
                         set -eux
 
                         echo "$DOCKER_PASSWORD" | docker login -u ${REGISTRY} --password-stdin
-
-                        docker build -t ${IMAGE}:${TAG} .
-                        docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-
                         docker push ${IMAGE}:${TAG}
+                        docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
                         docker push ${IMAGE}:latest
-
                         docker logout
                     '''
                 }
@@ -96,8 +134,8 @@ pipeline {
                     NOT_READY=$(kubectl get nodes --no-headers | grep -v " Ready" || true)
 
                     if [ ! -z "$NOT_READY" ]; then
-                        echo "❌ Some nodes NOT READY"
-                        exit 1
+                      echo "❌ Some nodes NOT READY"
+                      exit 1
                     fi
 
                     echo "✅ All nodes READY"
@@ -105,35 +143,66 @@ pipeline {
             }
         }
 
-        /* ✅ DEPLOY */
-        stage('Deploy') {
+        /* ======================= */
+        stage('Deploy Application (K3s)') {
             steps {
                 sh '''
                     set -eux
 
                     kubectl apply -k k8s/app
+                    kubectl get pods -n ${NAMESPACE}
                 '''
             }
         }
 
-        /* ✅ RESTART */
-        stage('Rollout Restart') {
+        /* ======================= */
+        stage('Restart Auth Service') {
             steps {
                 sh '''
                     set -eux
 
                     kubectl rollout restart deployment auth-deployment -n ${NAMESPACE}
-                    kubectl rollout status deployment auth-deployment -n ${NAMESPACE}
+                    kubectl rollout status deployment auth-deployment -n ${NAMESPACE} --timeout=180s
+                '''
+            }
+        }
+
+        /* ======================= */
+        stage('Deploy Monitoring') {
+            steps {
+                sh '''
+                    set -eux
+
+                    kubectl apply -k k8s/monitoring
+                    kubectl get pods -n monitoring
+                    kubectl get pvc -n monitoring
+                '''
+            }
+        }
+
+        /* ======================= */
+        stage('Restart Monitoring') {
+            steps {
+                sh '''
+                    set -eux
+
+                    kubectl rollout restart deployment prometheus -n monitoring
+                    kubectl rollout status deployment prometheus -n monitoring --timeout=180s
+
+                    kubectl rollout restart deployment alertmanager -n monitoring
+                    kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
+
+                    kubectl rollout restart deployment grafana -n monitoring
+                    kubectl rollout status deployment grafana -n monitoring --timeout=180s
                 '''
             }
         }
 
         /* ✅ CHECK FINAL */
-        stage('Check Pods') {
+        stage('Check Pods Final') {
             steps {
                 sh '''
                     set -eux
-
                     kubectl get pods -n ${NAMESPACE}
                     kubectl get svc -n ${NAMESPACE}
                 '''
@@ -144,7 +213,7 @@ pipeline {
     post {
 
         success {
-            echo "✅ AUTH SERVICE FULL PIPELINE SUCCESS 🚀"
+            echo "✅ FULL PIPELINE SUCCESS (BUILD + SONAR + DEPLOY + MONITORING) 🚀"
         }
 
         failure {
