@@ -18,134 +18,119 @@ pipeline {
     environment {
         REGISTRY   = "nour292"
         IMAGE      = "${REGISTRY}/auth-service"
-        TAG        = "latest"
+        TAG        = "${BUILD_NUMBER}"
         KUBECONFIG = "/var/lib/jenkins/.kube/config"
+        NAMESPACE  = "gestion-projet"
+
+        SONAR_PROJECT_KEY = "rouissinour464_micro-service-auth"
+        SONAR_ORG = "rouissinour464"
     }
 
     stages {
 
-        /* =======================
-           SOURCE CODE
-        ======================= */
+        /* ======================= */
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        /* =======================
-           BUILD
-        ======================= */
-        stage('Build') {
+        /* ✅ VERSION SIMPLE */
+        stage('Build & Test') {
             steps {
                 sh '''
                     set -eux
                     chmod +x mvnw
-                    ./mvnw clean compile
+                    ./mvnw clean verify
                 '''
             }
         }
 
-        /* =======================
-           UNIT TESTS
-        ======================= */
-        stage('Unit Tests') {
+        /* ✅ SONARCLOUD */
+        stage('SonarCloud') {
             steps {
-                sh '''
-                    set -eux
-                    ./mvnw test
-                '''
+                withSonarQubeEnv('SonarCloud') {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            ./mvnw sonar:sonar \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.organization=${SONAR_ORG} \
+                            -Dsonar.host.url=https://sonarcloud.io \
+                            -Dsonar.login=${SONAR_TOKEN}
+                        '''
+                    }
+                }
             }
         }
 
-        /* =======================
-           INTEGRATION TESTS
-        ======================= */
-        stage('Integration Tests') {
+        /* ✅ QUALITY GATE */
+        stage('Quality Gate') {
             steps {
-                sh '''
-                    set -eux
-                    ./mvnw verify
-                '''
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
-        /* =======================
-           DOCKER
-        ======================= */
-        stage('Docker Build') {
+        /* ✅ DOCKER CLEAN */
+        stage('Docker Build & Push') {
             steps {
-                sh '''
-                    set -eux
-                    docker build -t ${IMAGE}:${TAG} .
-                '''
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')
-                ]) {
+                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')]) {
                     sh '''
                         set -eux
-                        echo "$DOCKER_PASSWORD" | docker login -u nour292 --password-stdin
+
+                        echo "$DOCKER_PASSWORD" | docker login -u ${REGISTRY} --password-stdin
+
+                        docker build -t ${IMAGE}:${TAG} .
+                        docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+
                         docker push ${IMAGE}:${TAG}
+                        docker push ${IMAGE}:latest
+
                         docker logout
                     '''
                 }
             }
         }
 
-        /* =======================
-           APPLICATION DEPLOY
-        ======================= */
-        stage('Deploy Application (K3s)') {
+        /* ✅ CHECK NODES */
+        stage('Check Cluster Nodes') {
+            steps {
+                sh '''
+                    set -eux
+
+                    kubectl get nodes
+
+                    NOT_READY=$(kubectl get nodes --no-headers | grep -v " Ready" || true)
+
+                    if [ ! -z "$NOT_READY" ]; then
+                        echo "❌ Some nodes NOT READY"
+                        exit 1
+                    fi
+
+                    echo "✅ All nodes READY"
+                '''
+            }
+        }
+
+        /* ✅ DEPLOY */
+        stage('Deploy') {
             steps {
                 sh '''
                     set -eux
                     kubectl apply -k k8s/app
-                    kubectl get pods -n gestion-projet
                 '''
             }
         }
 
-        stage('Restart Auth Service') {
+        /* ✅ RESTART */
+        stage('Rollout Restart') {
             steps {
                 sh '''
                     set -eux
-                    kubectl rollout restart deployment auth-deployment -n gestion-projet
-                    kubectl rollout status deployment auth-deployment -n gestion-projet --timeout=180s
-                '''
-            }
-        }
 
-        /* =======================
-           MONITORING STACK
-        ======================= */
-        stage('Deploy Monitoring') {
-            steps {
-                sh '''
-                    set -eux
-                    kubectl apply -k k8s/monitoring
-                    kubectl get pods -n monitoring
-                    kubectl get pvc -n monitoring
-                '''
-            }
-        }
-
-        stage('Restart Monitoring') {
-            steps {
-                sh '''
-                    set -eux
-                    kubectl rollout restart deployment prometheus -n monitoring
-                    kubectl rollout status deployment prometheus -n monitoring --timeout=180s
-
-                    kubectl rollout restart deployment alertmanager -n monitoring
-                    kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
-
-                    kubectl rollout restart deployment grafana -n monitoring
-                    kubectl rollout status deployment grafana -n monitoring --timeout=180s
+                    kubectl rollout restart deployment auth-deployment -n ${NAMESPACE}
+                    kubectl rollout status deployment auth-deployment -n ${NAMESPACE}
                 '''
             }
         }
@@ -153,11 +138,19 @@ pipeline {
 
     post {
         success {
-            echo "✅ BUILD + TESTS + DEPLOY + MONITORING SUCCESSFULLY 🎉"
+            echo "✅ AUTH SERVICE SUCCESS 🚀"
         }
+
         failure {
-            echo "❌ PIPELINE FAILED ❌"
+            echo "❌ PIPELINE FAILED"
+
+            sh '''
+                kubectl get pods -n ${NAMESPACE} || true
+                kubectl describe pods -n ${NAMESPACE} || true
+                kubectl logs -l app=auth-service -n ${NAMESPACE} --tail=50 || true
+            '''
         }
+
         always {
             cleanWs()
         }
