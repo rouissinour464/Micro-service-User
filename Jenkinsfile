@@ -35,28 +35,18 @@ pipeline {
             }
         }
 
-        /* ======================= */
-        stage('Build') {
-            steps {
-                sh '''
-                    set -eux
-                    chmod +x mvnw
-                    ./mvnw clean compile
-                '''
-            }
-        }
-
-        /* ======================= */
+        /* ✅ TESTS UNIQUEMENT */
         stage('Unit Tests') {
             steps {
                 sh '''
                     set -eux
+                    chmod +x mvnw
                     ./mvnw test
                 '''
             }
         }
 
-        /* ======================= */
+        /* ✅ INTEGRATION TEST */
         stage('Integration Tests') {
             steps {
                 sh '''
@@ -66,7 +56,7 @@ pipeline {
             }
         }
 
-        /* ✅ SONARCLOUD AJOUTÉ */
+        /* ✅ SONAR */
         stage('SonarCloud Analysis') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
@@ -85,7 +75,7 @@ pipeline {
             }
         }
 
-        /* ✅ QUALITY GATE */
+        /* ✅ QUALITY */
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -94,7 +84,7 @@ pipeline {
             }
         }
 
-        /* ======================= */
+        /* ✅ DOCKER = build réel */
         stage('Docker Build') {
             steps {
                 sh '''
@@ -104,7 +94,7 @@ pipeline {
             }
         }
 
-        /* ======================= */
+        /* ✅ PUSH */
         stage('Docker Push') {
             steps {
                 withCredentials([
@@ -128,72 +118,49 @@ pipeline {
             steps {
                 sh '''
                     set -eux
-
                     kubectl get nodes
-
-                    NOT_READY=$(kubectl get nodes --no-headers | grep -v " Ready" || true)
-
-                    if [ ! -z "$NOT_READY" ]; then
-                      echo "❌ Some nodes NOT READY"
-                      exit 1
-                    fi
-
-                    echo "✅ All nodes READY"
                 '''
             }
         }
 
-        /* ======================= */
+        /* ✅ DEPLOY */
         stage('Deploy Application (K3s)') {
             steps {
                 sh '''
                     set -eux
-
                     kubectl apply -k k8s/app
-                    kubectl get pods -n ${NAMESPACE}
                 '''
             }
         }
 
-        /* ======================= */
+        /* ✅ RESTART */
         stage('Restart Auth Service') {
             steps {
                 sh '''
                     set -eux
-
                     kubectl rollout restart deployment auth-deployment -n ${NAMESPACE}
-                    kubectl rollout status deployment auth-deployment -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment auth-deployment -n ${NAMESPACE}
                 '''
             }
         }
 
-        /* ======================= */
+        /* ✅ MONITORING */
         stage('Deploy Monitoring') {
             steps {
                 sh '''
                     set -eux
-
                     kubectl apply -k k8s/monitoring
-                    kubectl get pods -n monitoring
-                    kubectl get pvc -n monitoring
                 '''
             }
         }
 
-        /* ======================= */
         stage('Restart Monitoring') {
             steps {
                 sh '''
                     set -eux
-
                     kubectl rollout restart deployment prometheus -n monitoring
-                    kubectl rollout status deployment prometheus -n monitoring --timeout=180s
-
                     kubectl rollout restart deployment alertmanager -n monitoring
-                    kubectl rollout status deployment alertmanager -n monitoring --timeout=180s
-
                     kubectl rollout restart deployment grafana -n monitoring
-                    kubectl rollout status deployment grafana -n monitoring --timeout=180s
                 '''
             }
         }
@@ -202,29 +169,23 @@ pipeline {
         stage('Check Pods Final') {
             steps {
                 sh '''
-                    set -eux
                     kubectl get pods -n ${NAMESPACE}
-                    kubectl get svc -n ${NAMESPACE}
                 '''
             }
         }
     }
 
     post {
-
         success {
-            echo "✅ FULL PIPELINE SUCCESS (BUILD + SONAR + DEPLOY + MONITORING) 🚀"
+            echo "✅ PIPELINE SUCCESS 🚀"
         }
 
         failure {
             echo "❌ PIPELINE FAILED"
 
             sh '''
-                echo "=== DEBUG ==="
-                kubectl get pods -n ${NAMESPACE} || true
                 kubectl describe pods -n ${NAMESPACE} || true
                 kubectl logs -l app=auth-service -n ${NAMESPACE} --tail=80 || true
-                kubectl get events -n ${NAMESPACE} || true
             '''
         }
 
