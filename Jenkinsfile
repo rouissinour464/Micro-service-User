@@ -35,28 +35,20 @@ pipeline {
             }
         }
 
-        /* ✅ VERSION SIMPLE */
-        stage('Build & Test') {
-            steps {
-                sh '''
-                    set -eux
-                    chmod +x mvnw
-                    ./mvnw clean verify
-                '''
-            }
-        }
-
-        /* ✅ SONARCLOUD */
-        stage('SonarCloud') {
+        /* ✅ BUILD + TEST + SONAR */
+        stage('Build + Test + Sonar') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh '''
-                            ./mvnw sonar:sonar \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.organization=${SONAR_ORG} \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN}
+                            set -eux
+                            chmod +x mvnw
+
+                            ./mvnw clean verify sonar:sonar \
+                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                              -Dsonar.organization=${SONAR_ORG} \
+                              -Dsonar.host.url=https://sonarcloud.io \
+                              -Dsonar.token=${SONAR_TOKEN}
                         '''
                     }
                 }
@@ -72,7 +64,7 @@ pipeline {
             }
         }
 
-        /* ✅ DOCKER CLEAN */
+        /* ✅ DOCKER BUILD + PUSH */
         stage('Docker Build & Push') {
             steps {
                 withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASSWORD')]) {
@@ -93,7 +85,7 @@ pipeline {
             }
         }
 
-        /* ✅ CHECK NODES */
+        /* ✅ CHECK CLUSTER */
         stage('Check Cluster Nodes') {
             steps {
                 sh '''
@@ -118,6 +110,7 @@ pipeline {
             steps {
                 sh '''
                     set -eux
+
                     kubectl apply -k k8s/app
                 '''
             }
@@ -134,20 +127,35 @@ pipeline {
                 '''
             }
         }
+
+        /* ✅ CHECK FINAL */
+        stage('Check Pods') {
+            steps {
+                sh '''
+                    set -eux
+
+                    kubectl get pods -n ${NAMESPACE}
+                    kubectl get svc -n ${NAMESPACE}
+                '''
+            }
+        }
     }
 
     post {
+
         success {
-            echo "✅ AUTH SERVICE SUCCESS 🚀"
+            echo "✅ AUTH SERVICE FULL PIPELINE SUCCESS 🚀"
         }
 
         failure {
             echo "❌ PIPELINE FAILED"
 
             sh '''
+                echo "=== DEBUG ==="
                 kubectl get pods -n ${NAMESPACE} || true
                 kubectl describe pods -n ${NAMESPACE} || true
-                kubectl logs -l app=auth-service -n ${NAMESPACE} --tail=50 || true
+                kubectl logs -l app=auth-service -n ${NAMESPACE} --tail=80 || true
+                kubectl get events -n ${NAMESPACE} || true
             '''
         }
 
