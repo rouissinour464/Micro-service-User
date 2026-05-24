@@ -125,18 +125,56 @@ pipeline {
                         git config user.email "${GIT_USER_EMAIL}"
                         git config user.name  "${GIT_USER_NAME}"
 
-                        git checkout -B main
+                        git checkout -B v1
 
-                        sed -i "s|newTag:.*|newTag: \\"${TAG}\\"|g" k8s/app/kustomization.yaml
+                        # ✅ ciblé uniquement auth-service
+                        sed -i "/name: nour292\\/auth-service/{n;s/newTag:.*/newTag: \\"${TAG}\\"/}" k8s/app/kustomization.yaml
 
                         git add k8s/app/kustomization.yaml
-                        git commit -m "ci: update auth-service image tag to ${TAG} [skip ci]"
+                        git commit -m "ci: update auth-service image tag to ${TAG} [skip ci]" || true
 
-                        REMOTE=$(git remote get-url origin \
-                            | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
-                        git push "$REMOTE" HEAD:main
+                        REMOTE=$(git remote get-url origin | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
+                        git push "$REMOTE" HEAD:v1
                     '''
                 }
+            }
+        }
+
+        stage('Apply ArgoCD Apps') {
+            steps {
+                sh '''
+                    set -eux
+                    kubectl apply -f k8s/argocd/ -n argocd || true
+                    argocd app list --grpc-web || true
+                '''
+            }
+        }
+
+        stage('Refresh ArgoCD Cache') {
+            steps {
+                sh '''
+                    set -eux
+                    kubectl rollout restart deployment argocd-repo-server -n argocd
+                '''
+            }
+        }
+
+        stage('Force Sync ArgoCD') {
+            steps {
+                sh '''
+                    set -eux
+                    argocd app sync auth-service --grpc-web || true
+                '''
+            }
+        }
+
+        stage('Debug Kustomize') {
+            steps {
+                sh '''
+                    set -eux
+                    echo "🔍 Debug Kustomize"
+                    kustomize build k8s/app || true
+                '''
             }
         }
 
@@ -176,6 +214,7 @@ pipeline {
         stage('Check Pods Final') {
             steps {
                 sh '''
+                    set -eux
                     kubectl get pods -n ${NAMESPACE}
                     kubectl get applications -n argocd || true
                 '''
