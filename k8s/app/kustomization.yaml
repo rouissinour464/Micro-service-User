@@ -10,7 +10,6 @@ resources:
   - deployment.yml
   - service.yml
 
-# ← ajouter ceci
 images:
   - name: nour292/auth-service
     newTag: "latest"
