@@ -12,4 +12,4 @@ resources:
 
 images:
   - name: nour292/auth-service
-    newTag: "109"
+    newTag: "112"
