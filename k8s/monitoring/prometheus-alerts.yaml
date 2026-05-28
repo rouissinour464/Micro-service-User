@@ -3,13 +3,17 @@ kind: ConfigMap
 metadata:
   name: prometheus-alerts
   namespace: monitoring
+
 data:
   alert-rules.yml: |
     groups:
+
     - name: auth-service-alerts
       rules:
+
       - alert: AuthServiceDown
         expr: up{job="auth-service"} == 0
+        for: 3m
         labels:
           severity: critical
           service: auth-service
@@ -19,9 +23,13 @@ data:
 
       - alert: AuthHighJVMMemory
         expr: |
-          sum by (job) (jvm_memory_used_bytes{job="auth-service", area="heap"})
+          sum by (job) (
+            jvm_memory_used_bytes{job="auth-service", area="heap"}
+          )
           /
-          sum by (job) (jvm_memory_max_bytes{job="auth-service", area="heap"}) > 0.8
+          sum by (job) (
+            jvm_memory_max_bytes{job="auth-service", area="heap"}
+          ) > 0.8
         labels:
           severity: warning
           service: auth-service
@@ -52,20 +60,26 @@ data:
 
     - name: stage-service-alerts
       rules:
+
       - alert: StageServiceDown
         expr: up{job="stage-service"} == 0
+        for: 3m
         labels:
           severity: critical
           service: stage-service
         annotations:
           summary: "Stage Service DOWN"
-          description: "stage-service ne répond plus"
+          description: "stage-service ne répond plus depuis plus de 3 minutes"
 
       - alert: StageHighJVMMemory
         expr: |
-          sum by (job) (jvm_memory_used_bytes{job="stage-service", area="heap"})
+          sum by (job) (
+            jvm_memory_used_bytes{job="stage-service", area="heap"}
+          )
           /
-          sum by (job) (jvm_memory_max_bytes{job="stage-service", area="heap"}) > 0.8
+          sum by (job) (
+            jvm_memory_max_bytes{job="stage-service", area="heap"}
+          ) > 0.8
         labels:
           severity: warning
           service: stage-service
@@ -96,8 +110,10 @@ data:
 
     - name: gateway-service-alerts
       rules:
+
       - alert: GatewayServiceDown
         expr: up{job="gateway-service"} == 0
+        for: 3m
         labels:
           severity: critical
           service: gateway-service
@@ -107,9 +123,13 @@ data:
 
       - alert: GatewayHighJVMMemory
         expr: |
-          sum by (job) (jvm_memory_used_bytes{job="gateway-service", area="heap"})
+          sum by (job) (
+            jvm_memory_used_bytes{job="gateway-service", area="heap"}
+          )
           /
-          sum by (job) (jvm_memory_max_bytes{job="gateway-service", area="heap"}) > 0.8
+          sum by (job) (
+            jvm_memory_max_bytes{job="gateway-service", area="heap"}
+          ) > 0.8
         labels:
           severity: warning
           service: gateway-service
@@ -128,8 +148,10 @@ data:
 
     - name: frontend-alerts
       rules:
+
       - alert: FrontendDown
         expr: up{job="frontend"} == 0
+        for: 3m
         labels:
           severity: critical
           service: frontend
@@ -139,9 +161,16 @@ data:
 
     - name: node-alerts
       rules:
+
       - alert: NodeHighMemory
         expr: |
-          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+          (
+            1 - (
+              node_memory_MemAvailable_bytes
+              /
+              node_memory_MemTotal_bytes
+            )
+          ) > 0.85
         labels:
           severity: warning
         annotations:
@@ -150,8 +179,13 @@ data:
 
       - alert: NodeHighDisk
         expr: |
-          (1 - (node_filesystem_avail_bytes{mountpoint="/"}
-          / node_filesystem_size_bytes{mountpoint="/"})) > 0.85
+          (
+            1 - (
+              node_filesystem_avail_bytes{mountpoint="/"}
+              /
+              node_filesystem_size_bytes{mountpoint="/"}
+            )
+          ) > 0.85
         labels:
           severity: warning
         annotations:
