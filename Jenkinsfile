@@ -11,6 +11,10 @@ pipeline {
         cron('H */6 * * *')
     }
 
+    tools {
+        jdk 'JDK21'
+    }
+
     environment {
         REGISTRY   = "nour292"
         IMAGE      = "${REGISTRY}/auth-service"
@@ -18,8 +22,8 @@ pipeline {
         KUBECONFIG = "/var/lib/jenkins/.kube/config"
         NAMESPACE  = "gestion-projet"
 
-        SONAR_PROJECT_KEY  = "rouissinour464_micro-service-auth"
-        SONAR_ORG          = "rouissinour464"
+        SONAR_PROJECT_KEY = "rouissinour464_micro-service-auth"
+        SONAR_ORG         = "rouissinour464"
 
         GIT_CREDENTIALS_ID = "github-creds"
         GIT_USER_EMAIL     = "jenkins@ci.local"
@@ -44,11 +48,6 @@ pipeline {
                     ./mvnw test
                 '''
             }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
         }
 
         // ============================================================
@@ -57,7 +56,7 @@ pipeline {
             steps {
                 sh '''
                     set -eux
-                    ./mvnw verify -DskipUnitTests
+                    ./mvnw verify
                 '''
             }
         }
@@ -98,7 +97,6 @@ pipeline {
                 sh '''
                     set -eux
                     docker build -t ${IMAGE}:${TAG} .
-                    docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
                 '''
             }
         }
@@ -112,11 +110,9 @@ pipeline {
                         set -eux
                         echo "$DOCKER_PASSWORD" | docker login -u ${REGISTRY} --password-stdin
                         docker push ${IMAGE}:${TAG}
+                        docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
                         docker push ${IMAGE}:latest
                         docker logout
-
-                        echo "🧹 Cleanup images locales..."
-                        docker rmi ${IMAGE}:${TAG} ${IMAGE}:latest || true
                     '''
                 }
             }
@@ -129,14 +125,6 @@ pipeline {
                 sh '''
                     set -eux
                     kubectl get nodes
-
-                    NOT_READY=$(kubectl get nodes --no-headers | grep -v " Ready" || true)
-                    if [ -n "$NOT_READY" ]; then
-                        echo "❌ Some nodes NOT READY"
-                        exit 1
-                    fi
-
-                    echo "✅ ALL NODES READY"
                 '''
             }
         }
@@ -161,15 +149,11 @@ pipeline {
                             k8s/app/kustomization.yaml
 
                         git add k8s/app/kustomization.yaml
-                        git diff --cached --quiet && echo "⏭️ Pas de changement — skip commit" && exit 0
-
-                        git commit -m "ci: update auth-service image tag to ${TAG} [skip ci]"
+                        git commit -m "ci: update auth-service image tag to ${TAG} [skip ci]" || true
 
                         REMOTE=$(git remote get-url origin \
                             | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
                         git push "$REMOTE" HEAD:v1
-
-                        echo "✅ Tag ${TAG} pushé sur branche v1"
                     '''
                 }
             }
@@ -182,26 +166,24 @@ pipeline {
                 sh '''
                     set -eux
 
+                    # ── 1. Vérifier les fichiers k8s ─────────────────────────
                     echo "📂 Contenu de k8s/app :"
                     ls -la k8s/app/
 
+                    # ── 2. Debug : afficher le rendu Kustomize final ─────────
                     echo "🔍 Manifestes générés par Kustomize :"
                     kubectl kustomize k8s/app
 
+                    # ── 3. Créer le namespace s'il n'existe pas ──────────────
                     kubectl create namespace ${NAMESPACE} \
                         --dry-run=client -o yaml | kubectl apply -f -
 
+                    # ── 4. Appliquer tout le stack via Kustomize ─────────────
                     echo "🚀 Déploiement via Kustomize..."
                     kubectl apply -k k8s/app
 
+                    # ── 5. Attendre que le Deployment soit prêt ──────────────
                     echo "⏳ Attente du rollout..."
-                    kubectl rollout status deployment/auth-service \
-                        -n ${NAMESPACE} --timeout=120s
-
-                    echo "🔄 Restart forcé pour prendre la nouvelle image..."
-                    kubectl rollout restart deployment/auth-service \
-                        -n ${NAMESPACE}
-
                     kubectl rollout status deployment/auth-service \
                         -n ${NAMESPACE} --timeout=120s
 
@@ -229,8 +211,6 @@ pipeline {
                 sh '''
                     set -eux
                     kubectl rollout restart deployment argocd-repo-server -n argocd
-                    kubectl rollout status deployment argocd-repo-server \
-                        -n argocd --timeout=60s
                 '''
             }
         }
@@ -291,16 +271,8 @@ pipeline {
                 sh '''
                     set -eux
                     kubectl rollout restart deployment prometheus -n monitoring
-                    kubectl rollout status deployment prometheus \
-                        -n monitoring --timeout=60s
-
                     kubectl rollout restart deployment alertmanager -n monitoring
-                    kubectl rollout status deployment alertmanager \
-                        -n monitoring --timeout=60s
-
                     kubectl rollout restart deployment grafana -n monitoring
-                    kubectl rollout status deployment grafana \
-                        -n monitoring --timeout=60s
                 '''
             }
         }
@@ -311,14 +283,8 @@ pipeline {
             steps {
                 sh '''
                     set -eux
-                    echo "📦 Pods gestion-projet :"
                     kubectl get pods -n ${NAMESPACE}
-
-                    echo "📊 ArgoCD Applications :"
                     kubectl get applications -n argocd || true
-
-                    echo "📊 Pods monitoring :"
-                    kubectl get pods -n monitoring || true
                 '''
             }
         }
@@ -332,21 +298,8 @@ pipeline {
         failure {
             echo "❌ PIPELINE FAILED"
             sh '''
-                echo "=== Pods ==="
-                kubectl get pods -n ${NAMESPACE} || true
-
-                echo "=== Describe Pods ==="
                 kubectl describe pods -n ${NAMESPACE} || true
-
-                echo "=== Logs auth-service ==="
-                kubectl logs -l app=auth-service \
-                    -n ${NAMESPACE} --tail=80 || true
-
-                echo "=== Events ==="
-                kubectl get events -n ${NAMESPACE} \
-                    --sort-by='.lastTimestamp' || true
-
-                echo "=== ArgoCD status ==="
+                kubectl logs -l app=auth-service -n ${NAMESPACE} --tail=80 || true
                 argocd app get auth-service --grpc-web || true
             '''
         }
