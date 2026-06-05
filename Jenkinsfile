@@ -109,12 +109,10 @@ pipeline {
                         REMOTE=$(git remote get-url origin \
                             | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
 
-                        # Fetch pour avoir les infos à jour avant force-with-lease
                         git fetch "$REMOTE" v1
-
                         git checkout -B v1 FETCH_HEAD
 
-                        sed -i "/name: nour292\\/auth-service/{n;s/newTag:.*/newTag: \\"${TAG}\\"/}" \
+                        sed -i 's|newTag:.*|newTag: "'"${TAG}"'"|g' \
                             k8s/app/kustomization.yaml
 
                         git add k8s/app/kustomization.yaml
@@ -123,7 +121,7 @@ pipeline {
 
                         git commit -m "ci: auth-service → ${TAG} [skip ci]"
 
-                        git push "$REMOTE" HEAD:v1 --force-with-lease
+                        git push "$REMOTE" HEAD:v1 --force
 
                         echo "Git mis à jour — ArgoCD va sync automatiquement"
                     '''
