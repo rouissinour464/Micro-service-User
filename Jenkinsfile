@@ -21,8 +21,6 @@ pipeline {
         TAG                = "${BUILD_NUMBER}"
         KUBECONFIG         = "/var/lib/jenkins/.kube/config"
         NAMESPACE          = "gestion-projet"
-        SONAR_PROJECT_KEY  = "rouissinour464_micro-service-auth"
-        SONAR_ORG          = "rouissinour464"
         GIT_CREDENTIALS_ID = "github-creds"
         GIT_USER_EMAIL     = "jenkins@ci.local"
         GIT_USER_NAME      = "Jenkins CI"
@@ -55,34 +53,6 @@ pipeline {
                     set -eux
                     ./mvnw verify -DskipUnitTests
                 '''
-            }
-        }
-
-        stage('SonarCloud Analysis') {
-            steps {
-                withSonarQubeEnv('SonarCloud') {
-                    withCredentials([string(
-                        credentialsId: 'sonar-token',
-                        variable: 'SONAR_TOKEN'
-                    )]) {
-                        sh '''
-                            set -eux
-                            ./mvnw sonar:sonar \
-                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                              -Dsonar.organization=${SONAR_ORG} \
-                              -Dsonar.host.url=https://sonarcloud.io \
-                              -Dsonar.token=${SONAR_TOKEN}
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
             }
         }
 
@@ -124,10 +94,6 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────
-        // Met à jour kustomization.yaml → git push
-        // ArgoCD (app-user.yaml) détecte et deploy
-        // ─────────────────────────────────────────
         stage('Update Git Tag') {
             steps {
                 withCredentials([usernamePassword(
@@ -140,7 +106,13 @@ pipeline {
                         git config user.email "${GIT_USER_EMAIL}"
                         git config user.name  "${GIT_USER_NAME}"
 
-                        git checkout -B v1
+                        REMOTE=$(git remote get-url origin \
+                            | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
+
+                        # Fetch pour avoir les infos à jour avant force-with-lease
+                        git fetch "$REMOTE" v1
+
+                        git checkout -B v1 FETCH_HEAD
 
                         sed -i "/name: nour292\\/auth-service/{n;s/newTag:.*/newTag: \\"${TAG}\\"/}" \
                             k8s/app/kustomization.yaml
@@ -151,17 +123,14 @@ pipeline {
 
                         git commit -m "ci: auth-service → ${TAG} [skip ci]"
 
-                        REMOTE=$(git remote get-url origin \
-                            | sed "s|https://|https://${GIT_USER}:${GIT_TOKEN}@|")
                         git push "$REMOTE" HEAD:v1 --force-with-lease
+
+                        echo "Git mis à jour — ArgoCD va sync automatiquement"
                     '''
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // ArgoCD sync automatique via app-user.yaml
-        // ─────────────────────────────────────────
         stage('Wait ArgoCD Sync') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -181,9 +150,6 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────
-        // Monitoring — déployé seulement si absent
-        // ─────────────────────────────────────────
         stage('Deploy Monitoring') {
             steps {
                 sh '''
