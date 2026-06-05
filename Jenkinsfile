@@ -21,6 +21,8 @@ pipeline {
         TAG                = "${BUILD_NUMBER}"
         KUBECONFIG         = "/var/lib/jenkins/.kube/config"
         NAMESPACE          = "gestion-projet"
+        SONAR_PROJECT_KEY  = "rouissinour464_micro-service-auth"
+        SONAR_ORG          = "rouissinour464"
         GIT_CREDENTIALS_ID = "github-creds"
         GIT_USER_EMAIL     = "jenkins@ci.local"
         GIT_USER_NAME      = "Jenkins CI"
@@ -53,6 +55,34 @@ pipeline {
                     set -eux
                     ./mvnw verify -DskipUnitTests
                 '''
+            }
+        }
+
+        stage('SonarCloud Analysis') {
+            steps {
+                withSonarQubeEnv('SonarCloud') {
+                    withCredentials([string(
+                        credentialsId: 'sonar-token',
+                        variable: 'SONAR_TOKEN'
+                    )]) {
+                        sh '''
+                            set -eux
+                            ./mvnw sonar:sonar \
+                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                              -Dsonar.organization=${SONAR_ORG} \
+                              -Dsonar.host.url=https://sonarcloud.io \
+                              -Dsonar.token=${SONAR_TOKEN}
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
