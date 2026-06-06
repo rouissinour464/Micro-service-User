@@ -57,6 +57,13 @@ data:
             labels:
               application: "node-exporter"
 
+      - job_name: "kube-state-metrics"
+        static_configs:
+          - targets:
+              - kube-state-metrics.kube-system.svc.cluster.local:8080
+            labels:
+              application: "kube-state-metrics"
+
 ---
 apiVersion: apps/v1
 kind: Deployment
