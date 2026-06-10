@@ -9,4 +9,4 @@ resources:
   - service.yml
 images:
   - name: nour292/auth-service
-    newTag: "182"
+    newTag: "184"
